@@ -492,3 +492,16 @@ Ver la tabla de pendientes:
 
 - El clon temporal, las bases de datos de prueba y las carpetas `dist/` se borraron.
 - La base de datos real (`server/database/gym.sqlite`) no se tocó en ninguna prueba de esta fase.
+
+---
+
+## 2026-11-18 · Decisión: pendientes aplazados
+
+- **Decisión del usuario:** los pendientes #1 (tipos duplicados), #2 (rate limiting) y #3 (tests automatizados) **se aplazan** y no se abordan por ahora. Se mantienen en la tabla de pendientes.
+- **Motivo:** el MVP se usa solo en local, donde no suponen un riesgo real.
+- **Orden recomendado para cuando se retomen:**
+  1. #2 rate limiting (`express-rate-limit`).
+  2. #1 paquete `shared/` con npm workspaces.
+  3. #3 tests con Vitest + supertest, al final para que cubran también el paquete compartido.
+- **Obligatorio antes de exponer la API fuera de `localhost`:** resolver el #2.
+- Se suben a GitHub los commits de la Fase 4 (`3b29e05`, `5f5772f`) y esta entrada.
