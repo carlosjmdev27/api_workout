@@ -18,6 +18,9 @@ server/database/*.sqlite-wal
 server/database/*.sqlite-shm
 *.db
 
+# Local-only documentation (never pushed)
+INSTRUCCIONESDEEJECUCION.md
+
 # Logs
 logs/
 *.log
