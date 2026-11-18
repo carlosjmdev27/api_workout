@@ -3,20 +3,20 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+function readDevPort(mode: string): number {
   // '' prefix: also reads non-VITE_ vars, which are NOT exposed to the browser bundle.
-  const env = loadEnv(mode, '.', '');
-  const port = Number(env.DEV_SERVER_PORT);
-
+  const port = Number(loadEnv(mode, '.', '').DEV_SERVER_PORT);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('DEV_SERVER_PORT is missing or invalid. Copy client/.env.example to client/.env');
   }
+  return port;
+}
 
-  return {
-    plugins: [react(), tailwindcss()],
-    server: {
-      port,
-      strictPort: true, // Must match CORS_ORIGIN in server/.env.
-    },
-  };
-});
+export default defineConfig(({ command, mode }) => ({
+  plugins: [react(), tailwindcss()],
+  // The dev port only matters for `vite` (serve), not for `vite build`.
+  server:
+    command === 'serve'
+      ? { port: readDevPort(mode), strictPort: true } // Must match CORS_ORIGIN in server/.env.
+      : undefined,
+}));

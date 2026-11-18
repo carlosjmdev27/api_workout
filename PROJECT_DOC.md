@@ -12,7 +12,7 @@ Las entradas van en orden cronológico; la más reciente, al final.
 | Fase 1: Inicialización | ✅ Completada |
 | Fase 2: Base de datos y backend core | ✅ Completada |
 | Fase 3: Frontend core | ✅ Completada |
-| Fase 4: Verificación | ⏳ Pendiente |
+| Fase 4: Verificación | ✅ Completada |
 
 ### Pendientes / deuda técnica
 
@@ -23,7 +23,7 @@ Revisar esta lista al empezar cada tarea.
 | 1 | **Unificar tipos y límites duplicados** entre `client` y `server` (detalle abajo). | Media: hacerlo antes de ampliar el modelo de datos | Fase 3 |
 | 2 | **Rate limiting** en la API. | Alta antes de exponer la API fuera de local | Fase 2 |
 | 3 | **Tests automatizados** en el repo. Hasta ahora las pruebas han sido scripts temporales. | Media | Fase 2 |
-| 4 | Revisar los avisos de `picomatch` (solo afectan a dependencias de desarrollo del client). | Baja | Fase 1 |
+| 4 | Avisos de `picomatch` (ReDoS, GHSA-fc5q-39xc-vjpf) en dependencias **de desarrollo** de `client` y `server`. No hay versión corregida: todas hasta la 4.0.7, que es la última publicada, son vulnerables. Cuando salga una corregida, ejecutar `npm update` en `client` y `server`. | Baja: no llega a producción y la herramienta solo procesa patrones propios | Fase 1, ampliado en Fase 4 |
 
 **Detalle del pendiente #1: duplicados que hay que mantener sincronizados a mano**
 
@@ -40,11 +40,19 @@ Revisar esta lista al empezar cada tarea.
   2. Importarlo desde `client` y `server`.
   3. Así la validación del formulario podría reutilizar los mismos esquemas que la API.
 
-**Arrancar en local** (desde la raíz):
+**Arrancar en local** (desde la raíz). Estos comandos se verificaron en un clon limpio durante la Fase 4:
 
 ```bash
-npm run install:all   # solo la primera vez: instala raíz + server + client
-npm run dev           # API en http://localhost:3000 y web en http://localhost:5173
+# Solo la primera vez (o tras clonar)
+npm run install:all                          # instala raíz + server + client
+cp server/.env.example server/.env           # PowerShell: Copy-Item server\.env.example server\.env
+cp client/.env.example client/.env           # PowerShell: Copy-Item client\.env.example client\.env
+
+# Cada día
+npm run dev        # API (http://localhost:3000/api) y web (http://localhost:5173) en paralelo; Ctrl+C para parar
+
+# Antes de cada commit
+npm run check      # typecheck + lint + build de server y client
 ```
 
 La guía detallada está en `INSTRUCCIONESDEEJECUCION.md`, que es solo local.
@@ -422,3 +430,65 @@ client/src/
 - Hay una regla provisional y una solución prevista (paquete `shared/` con npm workspaces) para el pendiente #1.
 - Verificado: typecheck de `server` y de `client` correcto (solo cambiaron comentarios).
 - Commits `c4a91dc` (Fase 3) y este, subidos a GitHub.
+
+---
+
+## 2026-11-18 · Fase 4: Verificación final, seguridad y limpieza
+
+### Comandos exactos
+
+Están en el bloque **"Arrancar en local"** al principio de este documento.
+
+- Se verificaron **clonando el repo en una carpeta vacía** y siguiéndolos al pie de la letra: `install:all` → copiar los `.env` → `check` → `dev`.
+- Sobre ese clon pasaron las mismas pruebas de las fases anteriores:
+  - Smoke test de la API: 30/30.
+  - Flujos de interfaz con Edge vía CDP: 10/10.
+
+### Cambios realizados
+
+| Cambio | Motivo |
+|--------|--------|
+| `client/vite.config.ts`: el puerto sale de `DEV_SERVER_PORT` (`.env`), no de un `5173` fijo | Regla 5.C: nunca fijar puertos en el código. Solo se exige en `vite` (desarrollo); `vite build` no lo necesita. Variable sin prefijo `VITE_`, así que no llega al bundle del navegador. |
+| `client/.env.example`: añadido `DEV_SERVER_PORT=5173` | Documentar la variable nueva. También se añadió al `.env` local. |
+| `http-client.ts`: comprobación de `VITE_API_URL` al arrancar y tolerancia a la barra final | Sin la comprobación, faltar la variable provocaba peticiones a `undefined/routines` sin un error claro. |
+| ESLint en `server` (mismas versiones que `client`), script `lint` y `eslint.config.js` | Las reglas 5.A (sin `any`, máx. 150 líneas por función) se comprueban ahora automáticamente también en el backend. `_next` del manejador de errores, permitido con `argsIgnorePattern: '^_'`. |
+| Raíz: scripts `typecheck`, `lint` y `check` | Un solo comando para verificar todo el monorepo. |
+
+### Revisión de seguridad y limpieza (PROJECT_SPEC §5)
+
+| Regla | Verificación | Resultado |
+|-------|--------------|-----------|
+| A · Flujo Route → Controller → Service → Repository | Revisión de imports: los controladores solo importan servicios; solo los repositorios importan `better-sqlite3`. | ✅ |
+| A · Repository Pattern | Interfaces en `repositories/`; las clases concretas solo aparecen en `container.ts`. | ✅ |
+| A · Sin `any` | ESLint `no-explicit-any: error` en `client` y `server`. Solo dos aserciones `as` justificadas: `json.data as T` y `Object.fromEntries`. | ✅ |
+| A · Máx. 150 líneas | ESLint `max-lines-per-function` en ambos. Archivo más grande: 138 líneas. | ✅ |
+| A · Código muerto | Búsqueda de exports sin usar: ninguno. Sin `TODO`, `debugger` ni `console.*` de depuración; solo los logs intencionados del server. | ✅ |
+| B · Validación en frontera | Todos los POST y PUT pasan por `validateBody` (Zod `strictObject`) y todos los ids por `validateParams` (UUID). | ✅ |
+| B · Transacciones | Crear o borrar una rutina, y crear, borrar o reordenar ejercicios. Probado forzando un fallo de la base de datos a mitad: sin huérfanos. | ✅ |
+| B · Errores centralizados sin traza en producción | Error 500 simulado con datos internos: en producción solo `INTERNAL_ERROR` genérico, sin `stack` ni mensaje interno; en desarrollo sí incluye `stack`. | ✅ |
+| C · helmet | Cabeceras presentes (`nosniff`, etc.); sin `x-powered-by`. | ✅ |
+| C · CORS restrictivo | Preflight real: solo `http://localhost:5173`, métodos GET/POST/PUT/DELETE, cabecera `Content-Type`. Un origen ajeno no se refleja. | ✅ |
+| C · Inyección SQL | Todas las interpolaciones `${}` en SQL son constantes internas. Payload `'); DROP TABLE` guardado como texto literal. | ✅ |
+| C · Secretos y config | Sin puertos, URLs ni rutas fijas en el código (corregido el puerto de Vite). `.env` y `*.sqlite` no versionados (`git ls-files`). Sin `.env`, server y client fallan con un mensaje claro. | ✅ |
+| C · Límite de payload | `express.json({ limit: '10kb' })`: 12 KB → 413 `PAYLOAD_TOO_LARGE`. | ✅ |
+| Client · XSS | Sin `dangerouslySetInnerHTML`, `innerHTML` ni `eval`; React escapa todo el texto. Ids de URL con `encodeURIComponent`. | ✅ |
+| Dependencias | `npm audit --omit=dev`: **0** en raíz, server y client. Solo dev: `picomatch` sin versión corregida (pendiente #4). | ⚠️ aceptado |
+
+### Riesgos aceptados para el MVP local
+
+Ver la tabla de pendientes:
+
+- Sin rate limiting (#2).
+- Sin tests automatizados en el repo (#3).
+- `picomatch` en dependencias de desarrollo (#4).
+- Tipos duplicados entre client y server (#1).
+
+### Incidencia durante las pruebas
+
+- En el clon limpio, el flujo de interfaz 8 falló por un **error del test**, no de la app: esperaba ver una rutina de ejemplo de la Fase 3 que no existe en una base de datos nueva.
+- Se corrigió el test y pasaron 10/10.
+
+### Limpieza
+
+- El clon temporal, las bases de datos de prueba y las carpetas `dist/` se borraron.
+- La base de datos real (`server/database/gym.sqlite`) no se tocó en ninguna prueba de esta fase.
