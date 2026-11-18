@@ -1,0 +1,8 @@
+# Normalize line endings: store and check out text files as LF on every OS.
+* text=auto eol=lf
+
+# Binary files
+*.sqlite binary
+*.png binary
+*.jpg binary
+*.ico binary
