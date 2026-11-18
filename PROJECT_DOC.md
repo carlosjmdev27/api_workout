@@ -14,12 +14,14 @@ Las entradas van en orden cronológico; la más reciente, al final.
 | Fase 3: Frontend core | ⏳ Pendiente |
 | Fase 4: Verificación | ⏳ Pendiente |
 
-**Arrancar en local (por ahora):**
+**Arrancar en local** (desde la raíz):
 
 ```bash
-cd server && npm run dev   # API en http://localhost:3000  (GET /api/health)
-cd client && npm run dev   # Web en http://localhost:5173
+npm run install:all   # solo la primera vez: instala raíz + server + client
+npm run dev           # API en http://localhost:3000 y web en http://localhost:5173
 ```
+
+La guía detallada está en `INSTRUCCIONESDEEJECUCION.md`, que es solo local.
 
 ---
 
@@ -133,4 +135,21 @@ Las carpetas aún vacías llevan un `.gitkeep` para que git las conserve.
 ## 2026-11-18 · Guía de ejecución local
 
 - Creado `INSTRUCCIONESDEEJECUCION.md` en la raíz. Explica cómo arrancar la API y la web en dos terminales, las URLs, la recarga en caliente, qué se ve en cada fase y cómo resolver los problemas habituales.
-- Es **solo local**: está añadido a `.gitignore` y nunca se sube al repositorio. Si cambia la forma de ejecutar la app, hay que actualizarlo. Para autenticarse se usará Git Credential Manager (ya instalado, `credential.helper=manager`), que abre el navegador. Nunca se escriben contraseñas ni tokens en el chat ni en archivos.
+- Es **solo local**: está añadido a `.gitignore` y nunca se sube al repositorio. Si cambia la forma de ejecutar la app, hay que actualizarlo.
+
+---
+
+## 2026-11-18 · Arranque unificado desde la raíz
+
+Se adelanta este punto de la Fase 4 ("levantar ambos entornos en paralelo").
+
+- **`package.json` en la raíz:** solo orquesta; no contiene código de la app. Única dependencia de desarrollo: `concurrently@9`, con 0 vulnerabilidades.
+
+  | Script | Qué hace |
+  |--------|----------|
+  | `npm run dev` | Arranca la API y la web a la vez, con prefijos `[api]` (azul) y `[web]` (verde). Con `--kill-others-on-fail`, si una falla se paran las dos. |
+  | `npm run install:all` | Instala las dependencias de la raíz, de `server` y de `client`. |
+  | `npm run build` | Compila primero `server` y después `client`. |
+
+- **Verificado:** con `npm run dev`, `GET /api/health` responde `ok` y la web devuelve `200`. Al parar el proceso, los puertos 3000 y 5173 quedan libres.
+- **`INSTRUCCIONESDEEJECUCION.md`:** actualizado. La opción A es `npm run dev` en la raíz; la opción B, dos terminales. Para autenticarse se usará Git Credential Manager (ya instalado, `credential.helper=manager`), que abre el navegador. Nunca se escriben contraseñas ni tokens en el chat ni en archivos.
