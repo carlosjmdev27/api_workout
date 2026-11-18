@@ -1,13 +1,25 @@
-import { Dumbbell } from 'lucide-react';
+import type { JSX } from 'react';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { Layout } from './components/Layout';
+import { NotFound } from './components/NotFound';
+import { RoutineCreatePage } from './features/routines/pages/RoutineCreatePage';
+import { RoutineDetailPage } from './features/routines/pages/RoutineDetailPage';
+import { RoutineEditPage } from './features/routines/pages/RoutineEditPage';
+import { RoutineListPage } from './features/routines/pages/RoutineListPage';
 
-function App(): React.JSX.Element {
+function App(): JSX.Element {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-      <div className="flex items-center gap-3 text-slate-800">
-        <Dumbbell className="h-8 w-8 text-indigo-600" aria-hidden="true" />
-        <h1 className="text-2xl font-semibold">Gym Routines</h1>
-      </div>
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<RoutineListPage />} />
+          <Route path="routines/new" element={<RoutineCreatePage />} />
+          <Route path="routines/:routineId" element={<RoutineDetailPage />} />
+          <Route path="routines/:routineId/edit" element={<RoutineEditPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -11,7 +11,7 @@ Las entradas van en orden cronológico; la más reciente, al final.
 |------|--------|
 | Fase 1: Inicialización | ✅ Completada |
 | Fase 2: Base de datos y backend core | ✅ Completada |
-| Fase 3: Frontend core | ⏳ Pendiente |
+| Fase 3: Frontend core | ✅ Completada |
 | Fase 4: Verificación | ⏳ Pendiente |
 
 **Arrancar en local** (desde la raíz):
@@ -285,3 +285,104 @@ La traza (`stack`) solo se incluye en errores 500 y nunca en producción. El err
 
 - No hay *rate limiting*. No lo exige la spec para el MVP local; recomendable antes de exponer la API.
 - No hay tests automatizados en el repo. Las pruebas de esta fase fueron scripts temporales, fuera del proyecto.
+
+---
+
+## 2026-11-18 · Fase 3: Frontend core
+
+- Primero se subió la Fase 2 a GitHub (`7ea28b8`).
+
+### Estructura
+
+```
+client/src/
+├── types/        exercise.ts, routine.ts, api.ts (copia del contrato del server), form.ts
+├── services/     http-client.ts (fetch + formato de respuesta), routines.api.ts,
+│                 exercises.api.ts, query-client.ts (config de React Query)
+├── utils/        limits.ts (copia de los límites del server), validation.ts, format.ts, errors.ts
+├── hooks/        useDocumentTitle.ts
+├── components/   UI reutilizable sin lógica de dominio:
+│                 Button, IconButton, LinkButton (+ button-styles.ts), FormField (TextField, TextAreaField),
+│                 Modal (<dialog> nativo), ConfirmDialog, Alert, StatusViews (Loading/Error/Empty),
+│                 Layout, PageHeader, NotFound
+├── features/
+│   ├── routines/  hooks.ts (React Query), routine-form.ts, useRoutineDraft.ts,
+│   │              components/ (RoutineCard, RoutineInfoFields, RoutineCreateForm, RoutineEditForm,
+│   │                           RoutineDetailHeader, FormActions)
+│   │              pages/ (RoutineListPage, RoutineDetailPage, RoutineCreatePage, RoutineEditPage)
+│   └── exercises/ hooks.ts, exercise-form.ts,
+│                  components/ (ExerciseFields, ExerciseForm, ExerciseFormDialog, ExerciseItem,
+│                               ExercisesSection, ExerciseDraftList)
+├── App.tsx       rutas
+└── main.tsx      QueryClientProvider
+```
+
+### Rutas de la web
+
+| URL | Vista |
+|-----|-------|
+| `/` | Listado de rutinas en tarjetas: nº de ejercicios y fecha de actualización |
+| `/routines/new` | Crear una rutina con sus ejercicios en un único formulario (un solo POST, atómico) |
+| `/routines/:id` | Detalle: datos, editar o eliminar la rutina; ejercicios con añadir, editar, eliminar y subir/bajar |
+| `/routines/:id/edit` | Editar el nombre y la descripción |
+| `*` | Página no encontrada |
+
+### Decisiones clave
+
+- **Capa HTTP** (`http-client.ts`):
+  - Hay un único sitio que habla con la API. Usa `VITE_API_URL`.
+  - Entiende el formato `{ success, data | error }`.
+  - Convierte cualquier fallo en `ApiRequestError` (`status`, `code`, `details`). Una API caída se convierte en `NETWORK_ERROR`.
+  - Única aserción de tipo: `json.data as T`. Se confía en el contrato de nuestra propia API, cuyos tipos son copia de los del server.
+- **React Query:**
+  - Claves de caché: `['routines','list']` y `['routines','detail',id]`.
+  - Cada mutación actualiza o invalida el detalle y el listado. Al reordenar se aplica al instante el orden que devuelve el server.
+  - Los errores 4xx no se reintentan; el resto, hasta 2 veces. `staleTime` es de 30 s.
+- **Formularios sin librerías extra:**
+  - Los valores del formulario se guardan como texto y se convierten a números al enviar. Se acepta coma decimal (`60,5`).
+  - Validación en cliente con los mismos límites que el server, solo para dar feedback inmediato. **El server sigue siendo la autoridad.**
+  - Los errores del server se muestran en un `Alert`, con detalles si los hay.
+- **Edición de ejercicios** en un modal desde la vista de detalle, no en una página aparte. El formulario de editar rutina solo cambia nombre y descripción.
+- **Accesibilidad:**
+  - `<dialog>` nativo: atrapa el foco y se cierra con Esc.
+  - `label` asociado a cada campo, con `aria-invalid` y `aria-describedby`.
+  - Los botones que solo tienen icono llevan `aria-label`.
+  - Hay estados de carga y error anunciados con `role`.
+- **Mensajes al usuario** en español, según el código de error de la API (`utils/errors.ts`).
+- **Responsive:**
+  - Rejilla de 1, 2 o 3 columnas en el listado.
+  - En móvil, las acciones de cada ejercicio se colocan en una rejilla de 2×2 y los botones de los formularios se apilan.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `tsc -b` | ✅ |
+| `eslint` (sin `any`, máx. 150 líneas por función) | ✅ |
+| `vite build` | ✅ (≈107 KB gzip de JS) |
+| Archivo más grande | 132 líneas (`ExercisesSection.tsx`) |
+| Preflight CORS real (POST desde 5173) | ✅ 204, origen, métodos y cabeceras correctos |
+| Capturas con Edge headless (escritorio y móvil a 390 px reales) | ✅ revisadas |
+| Flujos de interfaz automatizados con Edge vía CDP | ✅ 10/10 |
+
+**Flujos probados:**
+- Validación del formulario vacío.
+- Crear una rutina con un ejercicio usando coma decimal.
+- Error de rango en el modal y corrección.
+- Añadir un ejercicio desde el modal.
+- Reordenar.
+- Editar con los valores precargados.
+- Eliminar un ejercicio, con confirmación.
+- Editar la rutina.
+- Eliminar la rutina y volver al listado.
+- Mensaje de rutina inexistente.
+
+**Condiciones de las pruebas:**
+- Se comprobó antes que los puertos estaban libres, para no repetir la incidencia de la Fase 2.
+- Se usó una base de datos temporal fuera del proyecto. La base de datos real no se tocó.
+- Edge headless en Windows fuerza un ancho mínimo de unos 492 px. Las capturas de móvil se hicieron con un iframe de 390 px.
+
+### Pendiente o a futuro
+
+- Los tipos del contrato están duplicados en client y server, y también los límites. Si el proyecto crece, conviene extraerlos a un paquete compartido.
+- Reordenar con arrastrar y soltar. Ahora se hace con los botones de subir y bajar, que son accesibles con teclado.
