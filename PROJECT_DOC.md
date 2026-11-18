@@ -14,6 +14,32 @@ Las entradas van en orden cronológico; la más reciente, al final.
 | Fase 3: Frontend core | ✅ Completada |
 | Fase 4: Verificación | ⏳ Pendiente |
 
+### Pendientes / deuda técnica
+
+Revisar esta lista al empezar cada tarea.
+
+| # | Pendiente | Prioridad | Origen |
+|---|-----------|-----------|--------|
+| 1 | **Unificar tipos y límites duplicados** entre `client` y `server` (detalle abajo). | Media: hacerlo antes de ampliar el modelo de datos | Fase 3 |
+| 2 | **Rate limiting** en la API. | Alta antes de exponer la API fuera de local | Fase 2 |
+| 3 | **Tests automatizados** en el repo. Hasta ahora las pruebas han sido scripts temporales. | Media | Fase 2 |
+| 4 | Revisar los avisos de `picomatch` (solo afectan a dependencias de desarrollo del client). | Baja | Fase 1 |
+
+**Detalle del pendiente #1: duplicados que hay que mantener sincronizados a mano**
+
+| Client | Server |
+|--------|--------|
+| `src/types/exercise.ts` | `src/types/exercise.types.ts` |
+| `src/types/routine.ts` | `src/types/routine.types.ts` |
+| `src/types/api.ts` | `src/types/api.types.ts` |
+| `src/utils/limits.ts` | `src/config/limits.ts` |
+
+- **Regla mientras tanto:** cualquier cambio en uno de estos archivos se replica en su pareja en el mismo commit. Todos llevan un comentario que lo recuerda.
+- **Solución prevista:**
+  1. Crear un paquete `shared/` con npm workspaces, que contenga los tipos, los límites y, opcionalmente, los esquemas Zod.
+  2. Importarlo desde `client` y `server`.
+  3. Así la validación del formulario podría reutilizar los mismos esquemas que la API.
+
 **Arrancar en local** (desde la raíz):
 
 ```bash
@@ -386,3 +412,13 @@ client/src/
 
 - Los tipos del contrato están duplicados en client y server, y también los límites. Si el proyecto crece, conviene extraerlos a un paquete compartido.
 - Reordenar con arrastrar y soltar. Ahora se hace con los botones de subir y bajar, que son accesibles con teclado.
+
+---
+
+## 2026-11-18 · Seguimiento de la deuda técnica
+
+- Nueva tabla **"Pendientes / deuda técnica"** en el bloque "Estado actual" de este documento. Reúne los pendientes que estaban repartidos por las fases: duplicados, rate limiting, tests y `picomatch`.
+- Los 8 archivos duplicados (4 parejas client/server) llevan ahora el comentario `DUPLICATED in ... — keep both in sync`, que apunta a su pareja.
+- Hay una regla provisional y una solución prevista (paquete `shared/` con npm workspaces) para el pendiente #1.
+- Verificado: typecheck de `server` y de `client` correcto (solo cambiaron comentarios).
+- Commits `c4a91dc` (Fase 3) y este, subidos a GitHub.

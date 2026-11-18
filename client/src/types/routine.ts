@@ -1,4 +1,4 @@
-// Mirrors server/src/types/routine.types.ts (API contract).
+// DUPLICATED in server/src/types/routine.types.ts — keep both in sync (PROJECT_DOC pending #1).
 import type { Exercise, ExerciseInput } from './exercise';
 
 export interface Routine {

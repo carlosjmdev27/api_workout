@@ -1,3 +1,5 @@
+// DUPLICATED in client/src/types/exercise.ts — keep both in sync (PROJECT_DOC pending #1).
+
 /** Exercise inside a routine, as exposed by the API. */
 export interface Exercise {
   id: string;

@@ -1,4 +1,6 @@
-/** Mirrors server/src/config/limits.ts so the UI rejects invalid data early. */
+// DUPLICATED in server/src/config/limits.ts — keep both in sync (PROJECT_DOC pending #1).
+
+/** Lets the UI reject invalid data before calling the API. */
 export const LIMITS = {
   ROUTINE_NAME_MAX: 100,
   ROUTINE_DESCRIPTION_MAX: 500,

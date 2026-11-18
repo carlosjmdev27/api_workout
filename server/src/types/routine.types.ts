@@ -1,3 +1,4 @@
+// DUPLICATED in client/src/types/routine.ts — keep both in sync (PROJECT_DOC pending #1).
 import type { Exercise, ExerciseInput } from './exercise.types.js';
 
 export interface Routine {

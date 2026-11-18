@@ -1,3 +1,5 @@
+// DUPLICATED in client/src/utils/limits.ts — keep both in sync (PROJECT_DOC pending #1).
+
 /** Business limits shared by validation schemas and services. */
 export const LIMITS = {
   ROUTINE_NAME_MAX: 100,

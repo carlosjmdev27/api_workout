@@ -1,4 +1,4 @@
-// Mirrors server/src/types/api.types.ts (response envelope).
+// DUPLICATED in server/src/types/api.types.ts — keep both in sync (PROJECT_DOC pending #1).
 
 export interface ApiSuccess<T> {
   success: true;

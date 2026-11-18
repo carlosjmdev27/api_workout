@@ -1,4 +1,4 @@
-// Mirrors server/src/types/exercise.types.ts (API contract).
+// DUPLICATED in server/src/types/exercise.types.ts — keep both in sync (PROJECT_DOC pending #1).
 
 export interface Exercise {
   id: string;
