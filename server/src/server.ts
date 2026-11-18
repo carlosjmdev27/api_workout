@@ -1,7 +1,7 @@
 import { env } from './config/env.js';
-import { createApp } from './app.js';
+import { buildContainer } from './container.js';
 
-const app = createApp();
+const { app, close } = buildContainer(env);
 
 const server = app.listen(env.PORT, () => {
   console.log(`API listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);
@@ -9,7 +9,10 @@ const server = app.listen(env.PORT, () => {
 
 function shutdown(signal: NodeJS.Signals): void {
   console.log(`${signal} received, closing server...`);
-  server.close(() => process.exit(0));
+  server.close(() => {
+    close(); // Release the SQLite file cleanly.
+    process.exit(0);
+  });
 }
 
 process.on('SIGINT', shutdown);

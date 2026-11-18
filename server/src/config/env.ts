@@ -1,8 +1,9 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
+import { SERVER_ROOT } from './paths.js';
 
-const ENV_FILE_PATH = resolve(process.cwd(), '.env');
+const ENV_FILE_PATH = resolve(SERVER_ROOT, '.env');
 
 // Native Node loader (>= 20.12): avoids an extra dependency such as dotenv.
 if (existsSync(ENV_FILE_PATH)) {

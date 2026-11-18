@@ -10,7 +10,7 @@ Las entradas van en orden cronológico; la más reciente, al final.
 | Fase | Estado |
 |------|--------|
 | Fase 1: Inicialización | ✅ Completada |
-| Fase 2: Base de datos y backend core | ⏳ Pendiente |
+| Fase 2: Base de datos y backend core | ✅ Completada |
 | Fase 3: Frontend core | ⏳ Pendiente |
 | Fase 4: Verificación | ⏳ Pendiente |
 
@@ -153,3 +153,135 @@ Se adelanta este punto de la Fase 4 ("levantar ambos entornos en paralelo").
 
 - **Verificado:** con `npm run dev`, `GET /api/health` responde `ok` y la web devuelve `200`. Al parar el proceso, los puertos 3000 y 5173 quedan libres.
 - **`INSTRUCCIONESDEEJECUCION.md`:** actualizado. La opción A es `npm run dev` en la raíz; la opción B, dos terminales. Para autenticarse se usará Git Credential Manager (ya instalado, `credential.helper=manager`), que abre el navegador. Nunca se escriben contraseñas ni tokens en el chat ni en archivos.
+
+---
+
+## 2026-11-18 · Fase 2: Base de datos y backend core
+
+### Arquitectura
+
+Flujo estricto: **Route → (validación Zod) → Controller → Service → Repository → SQLite**
+
+```
+server/src/
+├── config/        env.ts (Zod), paths.ts (raíz de /server), limits.ts (límites de negocio)
+├── errors/        app-error.ts: AppError, NotFoundError (404), BusinessRuleError (422)
+├── types/         routine.types.ts, exercise.types.ts, api.types.ts (formato de respuesta)
+├── schemas/       common / routine / exercise .schema.ts (Zod)
+├── repositories/  routine.repository.ts, exercise.repository.ts  ← interfaces
+│   └── sqlite/    connection, migrations, mappers, sqlite-*.repository.ts  ← implementación
+├── services/      routine.service.ts, exercise.service.ts  ← lógica de negocio
+├── controllers/   routine / exercise .controller.ts, response.ts  ← solo HTTP
+├── middlewares/   security (helmet + cors), validate (Zod), error (global + 404)
+├── routes/        health / routine / exercise .routes.ts
+├── container.ts   raíz de composición: el único sitio que conoce las clases concretas
+├── app.ts         createApp(deps): monta middlewares y rutas
+└── server.ts      arranque y apagado limpio (también cierra SQLite)
+```
+
+**Carpeta nueva fuera de la spec:** `errors/`, porque los errores de dominio no encajan en `types/` (son clases, no tipos).
+
+### Decisiones clave
+
+- **Interfaces de repositorio asíncronas** (`Promise`), aunque `better-sqlite3` es síncrono. Así, migrar a PostgreSQL solo exige escribir otra implementación y cambiarla en `container.ts`. Servicios y controladores no se tocan.
+- **Todo lo específico de SQLite** está en `repositories/sqlite/`.
+- **Migraciones versionadas** con `PRAGMA user_version` (versión actual: 1). Nunca se edita una migración ya aplicada; se añade una nueva al array.
+- **Pragmas:** `foreign_keys = ON` (SQLite las trae desactivadas), `journal_mode = WAL` y `busy_timeout = 5000`.
+- **`order` se guarda en la columna `position`**, porque `ORDER` es palabra reservada en SQL. En la API se expone como `order`, empezando en 1.
+- **Integridad también en la base de datos:**
+  - `CHECK` en `sets > 0`, `weight >= 0`, `rest_seconds >= 0` y `position > 0`.
+  - FK con `ON DELETE CASCADE`.
+  - Índice `(routine_id, position)`.
+- **Transacciones** en todas las escrituras de varias filas:
+  - Crear una rutina con sus ejercicios.
+  - Borrar una rutina: borrado explícito de los ejercicios y después de la rutina. No depende de la cascada, así funciona igual en cualquier motor.
+  - Crear o borrar un ejercicio: al borrar se cierra el hueco en `order`.
+  - Reordenar.
+- **Cada cambio en un ejercicio actualiza el `updatedAt` de su rutina.**
+- **PUT es actualización parcial:** un campo ausente se mantiene y `null` lo borra. En los textos opcionales, `""` se guarda como `null`.
+- **Validación Zod en frontera:**
+  - Se usa `strictObject`, así que los campos desconocidos dan 400.
+  - Los ids de la URL tienen que ser UUID.
+  - Los textos se recortan (`trim`).
+  - `satisfies z.ZodType<...>` garantiza en compilación que cada esquema coincide con su tipo de dominio.
+- **Límites** (`config/limits.ts`):
+
+  | Campo | Límite |
+  |-------|--------|
+  | Nombre | 100 caracteres |
+  | Descripción y notas | 500 caracteres |
+  | Repeticiones | 20 caracteres |
+  | Series | 1 a 100 |
+  | Peso | 0 a 1000 kg |
+  | Descanso | 0 a 3600 s |
+  | Ejercicios por rutina | 50 como máximo |
+
+- **Ids** generados con `crypto.randomUUID()`; **fechas** en ISO 8601.
+- **`.env` y la base de datos** se resuelven desde la carpeta `/server` (`paths.ts`), no desde el directorio de trabajo. La app funciona igual tanto si se arranca desde la raíz como desde `server/`.
+
+### Endpoints (`/api`)
+
+| Método | Ruta | Respuesta |
+|--------|------|-----------|
+| GET | `/health` | 200 `{status:"ok"}` |
+| GET | `/routines` | 200, lista con `exerciseCount`, ordenada por `updatedAt` (más reciente primero) |
+| POST | `/routines` | 201, rutina con `exercises[]` (opcional en el body) |
+| GET | `/routines/:routineId` | 200, rutina con ejercicios ordenados |
+| PUT | `/routines/:routineId` | 200, `name` y/o `description` |
+| DELETE | `/routines/:routineId` | 204, borra también sus ejercicios |
+| GET | `/routines/:routineId/exercises` | 200 |
+| POST | `/routines/:routineId/exercises` | 201, se añade al final |
+| PUT | `/routines/:routineId/exercises/order` | 200, body `{exerciseIds:[...]}` con todos los ejercicios |
+| PUT | `/routines/:routineId/exercises/:exerciseId` | 200, actualización parcial |
+| DELETE | `/routines/:routineId/exercises/:exerciseId` | 204 |
+
+**Formato de respuesta:**
+
+- Éxito: `{ success: true, data }`.
+- Error: `{ success: false, error: { code, message, details? } }`.
+
+**Códigos de error:**
+
+| Código | HTTP |
+|--------|------|
+| `VALIDATION_ERROR` (con `details[]`) | 400 |
+| `INVALID_JSON` | 400 |
+| `ROUTINE_NOT_FOUND`, `EXERCISE_NOT_FOUND`, `ROUTE_NOT_FOUND` | 404 |
+| `PAYLOAD_TOO_LARGE` | 413 |
+| `INVALID_EXERCISE_ORDER`, `EXERCISE_LIMIT_REACHED` | 422 |
+| `INTERNAL_ERROR` | 500 |
+
+La traza (`stack`) solo se incluye en errores 500 y nunca en producción. El error completo se registra en la consola del servidor.
+
+### Seguridad
+
+- **`helmet()`** activo; `x-powered-by` desactivado.
+- **CORS** limitado al origen exacto de `CORS_ORIGIN`:
+  - Métodos permitidos: GET, POST, PUT y DELETE.
+  - Cabecera permitida: solo `Content-Type`.
+  - Las respuestas de preflight se cachean 10 minutos.
+- **Payload JSON** limitado a 10 KB.
+- **SQL:** solo sentencias preparadas con parámetros. La única interpolación es el número de versión interno en `PRAGMA user_version`, que no acepta parámetros.
+
+### Verificación
+
+- **Typecheck y build de producción:** ✅ Ningún `any` explícito. Archivo más grande: 138 líneas.
+- **Smoke test end-to-end:** ✅ 30/30 pruebas.
+  - CRUD completo, reordenación y compactación de `order`.
+  - Validaciones: vacío, campo desconocido, tipo incorrecto, UUID inválido, update vacío.
+  - Respuestas 404, 413 y JSON malformado.
+  - CORS: origen permitido y origen ajeno.
+  - Cabeceras de helmet y ausencia de `x-powered-by`.
+  - Inyección SQL: el texto se guarda literal y la tabla sigue existiendo.
+- **Atomicidad:** ✅ Forzando un fallo en la base de datos en el 2º ejercicio (`sets: 0`, saltándose Zod), no se guarda nada (0 rutinas, 0 huérfanos). `foreign_keys` está ON.
+- **Incidencia durante las pruebas:**
+  - El usuario tenía `npm run dev` activo y `tsx watch` recargó su API, así que el smoke test se ejecutó contra ella y dejó una rutina de prueba en `server/database/gym.sqlite`.
+  - La base de datos se había creado en ese mismo arranque, de modo que no había datos previos.
+  - La rutina de prueba se borró por la API; la base de datos quedó vacía.
+  - **Lección:** antes de lanzar un servidor de pruebas, comprobar si los puertos 3000 y 5173 están ocupados, y usar otra base de datos y otro puerto.
+- **`INSTRUCCIONESDEEJECUCION.md`:** nueva sección 4b con cómo probar la API desde el navegador y desde PowerShell.
+
+### Pendiente o a futuro
+
+- No hay *rate limiting*. No lo exige la spec para el MVP local; recomendable antes de exponer la API.
+- No hay tests automatizados en el repo. Las pruebas de esta fase fueron scripts temporales, fuera del proyecto.
