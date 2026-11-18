@@ -1,6 +1,14 @@
 import type { ApiErrorBody, ApiErrorDetail, ApiSuccess } from '../types/api';
 
-const BASE_URL: string = import.meta.env.VITE_API_URL;
+function readApiUrl(): string {
+  const url = import.meta.env.VITE_API_URL;
+  if (!url) {
+    throw new Error('VITE_API_URL is not defined. Copy client/.env.example to client/.env');
+  }
+  return url.replace(/\/+$/, ''); // Tolerate a trailing slash.
+}
+
+const BASE_URL: string = readApiUrl();
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
