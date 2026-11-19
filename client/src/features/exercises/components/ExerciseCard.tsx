@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { ArrowDown, ArrowUp, Pencil, Trash2 } from 'lucide-react';
 import type { DayExercise } from '@gym/shared';
 import { IconButton } from '../../../components/IconButton';
+import { useCatalogById } from '../../catalog/hooks';
 import { SetsTable } from './SetsTable';
 
 interface ExerciseCardProps {
@@ -25,6 +26,9 @@ export function ExerciseCard({
   onEdit,
   onDelete,
 }: ExerciseCardProps): JSX.Element {
+  const catalogById = useCatalogById();
+  const catalogEntry = exercise.catalogExerciseId ? catalogById.get(exercise.catalogExerciseId) : undefined;
+
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex gap-3">
@@ -33,6 +37,11 @@ export function ExerciseCard({
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="break-words font-medium text-slate-900">{exercise.name}</h3>
+          {catalogEntry && (
+            <p className="text-xs text-slate-500">
+              {catalogEntry.muscleGroup}{catalogEntry.equipment ? ` · ${catalogEntry.equipment}` : ''}
+            </p>
+          )}
           {exercise.notes && (
             <p className="mt-0.5 whitespace-pre-line break-words text-sm text-slate-500">{exercise.notes}</p>
           )}

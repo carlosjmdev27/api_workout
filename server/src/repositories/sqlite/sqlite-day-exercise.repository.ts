@@ -9,6 +9,7 @@ import { TreeReader } from './tree-reader.js';
 
 interface ExerciseWriteParams {
   id: string;
+  catalogId: string | null;
   name: string;
   notes: string | null;
 }
@@ -37,15 +38,17 @@ export class SqliteDayExerciseRepository implements DayExerciseRepository {
     this.touch = new RoutineToucher(db);
     this.stmt = {
       findRow: db.prepare(
-        'SELECT id, workout_day_id, name, notes, position FROM day_exercises WHERE id = ?',
+        'SELECT id, workout_day_id, catalog_exercise_id, name, notes, position FROM day_exercises WHERE id = ?',
       ),
       nextPosition: db.prepare(
         'SELECT COALESCE(MAX(position), 0) + 1 AS next FROM day_exercises WHERE workout_day_id = ?',
       ),
       insert: db.prepare(`
-        INSERT INTO day_exercises (id, workout_day_id, name, notes, position)
-        VALUES (@id, @dayId, @name, @notes, @position)`),
-      update: db.prepare('UPDATE day_exercises SET name = @name, notes = @notes WHERE id = @id'),
+        INSERT INTO day_exercises (id, workout_day_id, catalog_exercise_id, name, notes, position)
+        VALUES (@id, @dayId, @catalogId, @name, @notes, @position)`),
+      update: db.prepare(
+        'UPDATE day_exercises SET catalog_exercise_id = @catalogId, name = @name, notes = @notes WHERE id = @id',
+      ),
       delete: db.prepare('DELETE FROM day_exercises WHERE id = ?'),
       closeGap: db.prepare(
         'UPDATE day_exercises SET position = position - 1 WHERE workout_day_id = ? AND position > ?',
@@ -64,7 +67,14 @@ export class SqliteDayExerciseRepository implements DayExerciseRepository {
     return this.db.transaction((): DayExercise => {
       const id = randomUUID();
       const position = this.stmt.nextPosition.get(dayId)?.next ?? 1;
-      this.stmt.insert.run({ id, dayId, name: input.name, notes: input.notes ?? null, position });
+      this.stmt.insert.run({
+        id,
+        dayId,
+        catalogId: input.catalogExerciseId ?? null,
+        name: input.name,
+        notes: input.notes ?? null,
+        position,
+      });
       this.sets.replace(id, input.sets);
       this.touch.day(dayId);
       return this.getExercise(id);
@@ -78,6 +88,8 @@ export class SqliteDayExerciseRepository implements DayExerciseRepository {
 
       this.stmt.update.run({
         id: exerciseId,
+        catalogId:
+          input.catalogExerciseId === undefined ? current.catalog_exercise_id : input.catalogExerciseId,
         name: input.name ?? current.name,
         notes: input.notes === undefined ? current.notes : input.notes,
       });

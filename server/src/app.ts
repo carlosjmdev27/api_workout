@@ -1,10 +1,12 @@
 import express, { type Express } from 'express';
+import type { CatalogController } from './controllers/catalog.controller.js';
 import type { DayExerciseController } from './controllers/day-exercise.controller.js';
 import type { RoutineController } from './controllers/routine.controller.js';
 import type { SessionController } from './controllers/session.controller.js';
 import type { WorkoutDayController } from './controllers/workout-day.controller.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
 import { securityMiddlewares } from './middlewares/security.middleware.js';
+import { createCatalogRouter } from './routes/catalog.routes.js';
 import { createDayExerciseRouter } from './routes/day-exercise.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
 import { createRoutineRouter } from './routes/routine.routes.js';
@@ -16,6 +18,7 @@ export interface AppControllers {
   workoutDay: WorkoutDayController;
   dayExercise: DayExerciseController;
   session: SessionController;
+  catalog: CatalogController;
 }
 
 export interface AppDependencies {
@@ -35,6 +38,7 @@ export function createApp({ corsOrigin, isProduction, controllers }: AppDependen
   app.use('/api', createHealthRouter());
   app.use('/api', createRoutineRouter(controllers.routine));
   app.use('/api', createWorkoutDayRouter(controllers.workoutDay));
+  app.use('/api', createCatalogRouter(controllers.catalog)); // Before /exercises/:exerciseId.
   app.use('/api', createDayExerciseRouter(controllers.dayExercise));
   app.use('/api', createSessionRouter(controllers.session));
 

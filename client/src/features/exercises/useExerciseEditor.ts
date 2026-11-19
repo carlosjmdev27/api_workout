@@ -20,6 +20,11 @@ export function useExerciseEditor(initialValues: ExerciseFormValues) {
     setValues((previous) => ({ ...previous, [field]: value }));
   };
 
+  /** Free typing unlinks the catalog; picking an entry links it (catalogId) with its exact name. */
+  const setName = (name: string, catalogExerciseId: string | null): void => {
+    setValues((previous) => ({ ...previous, name, catalogExerciseId }));
+  };
+
   const updateSet = (index: number, patch: Partial<Record<SetNumberField, string>> | { setType: SetType }): void => {
     setValues((previous) => ({
       ...previous,
@@ -60,6 +65,7 @@ export function useExerciseEditor(initialValues: ExerciseFormValues) {
     canAddSet,
     canRemoveSet,
     setText,
+    setName,
     updateSet,
     addSet,
     duplicateSet,

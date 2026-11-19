@@ -30,6 +30,7 @@ export interface DayRow {
 export interface DayExerciseRow {
   id: string;
   workout_day_id: string;
+  catalog_exercise_id: string | null;
   name: string;
   notes: string | null;
   position: number;
@@ -103,6 +104,7 @@ export function toDayExercise(row: DayExerciseRow, sets: PlannedSet[]): DayExerc
   return {
     id: row.id,
     workoutDayId: row.workout_day_id,
+    catalogExerciseId: row.catalog_exercise_id,
     name: row.name,
     notes: row.notes,
     order: row.position,

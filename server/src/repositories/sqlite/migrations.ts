@@ -103,6 +103,25 @@ const MIGRATIONS: readonly string[] = [
     WHERE duration_minutes IS NOT NULL;
   ALTER TABLE workout_sessions DROP COLUMN duration_minutes;
   `,
+  // v4 — exercise catalog (base list + user exercises) and optional link from day exercises.
+  // name_normalized (lowercase, no accents) gives accent/case-insensitive UNIQUE + search.
+  `
+  CREATE TABLE exercise_catalog (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    name_normalized TEXT NOT NULL UNIQUE,
+    muscle_group    TEXT NOT NULL CHECK (muscle_group IN
+                      ('Pecho', 'Espalda', 'Pierna', 'Hombro', 'Bíceps', 'Tríceps', 'Core', 'Cardio')),
+    equipment       TEXT CHECK (equipment IS NULL OR equipment IN
+                      ('Barra', 'Mancuernas', 'Polea', 'Máquina', 'Peso Corporal')),
+    is_custom       INTEGER NOT NULL DEFAULT 0 CHECK (is_custom IN (0, 1)),
+    created_at      TEXT NOT NULL
+  );
+  CREATE INDEX idx_exercise_catalog_muscle ON exercise_catalog (muscle_group);
+
+  ALTER TABLE day_exercises ADD COLUMN catalog_exercise_id TEXT
+    REFERENCES exercise_catalog(id) ON DELETE SET NULL;
+  `,
 ];
 
 function getSchemaVersion(db: Database): number {

@@ -2,9 +2,10 @@ import type { FormEvent, JSX } from 'react';
 import { LIMITS, type DayExercise, type DayExerciseInput } from '@gym/shared';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
-import { TextAreaField, TextField } from '../../../components/FormField';
+import { TextAreaField } from '../../../components/FormField';
 import { Modal } from '../../../components/Modal';
 import { getErrorDetails, getErrorMessage } from '../../../utils/errors';
+import { ExerciseCombobox } from '../../catalog/components/ExerciseCombobox';
 import { emptyExercise, exerciseToFormValues, type ExerciseFormValues } from '../exercise-form';
 import { useExerciseEditor } from '../useExerciseEditor';
 import { SetRowsEditor } from './SetRowsEditor';
@@ -29,15 +30,12 @@ function ExerciseEditorForm({ initialValues, submitLabel, pending, error, onSubm
 
   return (
     <form noValidate onSubmit={handleSubmit} className="space-y-5">
-      <TextField
-        label="Ejercicio"
-        required
-        autoFocus
+      <ExerciseCombobox
         value={editor.values.name}
+        linkedId={editor.values.catalogExerciseId}
         error={editor.errors.name}
-        maxLength={LIMITS.NAME_MAX}
-        placeholder="Press de banca con barra"
-        onChange={(event) => editor.setText('name', event.target.value)}
+        onType={(text) => editor.setName(text, null)}
+        onPick={(exercise) => editor.setName(exercise.name, exercise.id)}
       />
       <SetRowsEditor editor={editor} />
       <TextAreaField

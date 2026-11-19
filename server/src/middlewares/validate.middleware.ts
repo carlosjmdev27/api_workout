@@ -19,3 +19,15 @@ export function validateParams(schema: z.ZodType<Record<string, string>>): Reque
     next();
   };
 }
+
+/**
+ * Validates the query string. Express 5 exposes req.query as a read-only getter,
+ * so the parsed value is defined as an own property of this request.
+ */
+export function validateQuery(schema: z.ZodType): RequestHandler {
+  return (req, _res, next) => {
+    const parsed: unknown = schema.parse(req.query);
+    Object.defineProperty(req, 'query', { value: parsed, writable: true, enumerable: true });
+    next();
+  };
+}

@@ -16,6 +16,8 @@ const MESSAGES: Record<string, string> = {
   INVALID_SESSION_EXERCISE: 'La sesión incluye ejercicios que ya no están en la tabla. Recarga la página.',
   INVALID_SESSION_DATE: 'La fecha del entrenamiento no puede ser futura.',
   INVALID_SESSION_DURATION: 'El entrenamiento dura demasiado (más de 10 h). Descártalo y empieza de nuevo.',
+  CATALOG_EXERCISE_EXISTS: 'Ese ejercicio ya existe en el catálogo: búscalo en la lista.',
+  INVALID_CATALOG_EXERCISE: 'El ejercicio del catálogo ya no existe. Elígelo de nuevo.',
   PAYLOAD_TOO_LARGE: 'Los datos enviados son demasiado grandes.',
   INTERNAL_ERROR: 'Error inesperado del servidor. Inténtalo de nuevo más tarde.',
 };

@@ -20,6 +20,8 @@ export type SetNumberField = 'targetWeight' | 'targetRepMin' | 'targetRepMax' | 
 
 export interface ExerciseFormValues {
   name: string;
+  /** Set when the name was picked from (or created in) the catalog. */
+  catalogExerciseId: string | null;
   notes: string;
   sets: SetRowValues[];
 }
@@ -38,7 +40,7 @@ export function newSetRow(from?: SetRowValues): SetRowValues {
 }
 
 export function emptyExercise(): ExerciseFormValues {
-  return { name: '', notes: '', sets: [newSetRow(), newSetRow(), newSetRow()] };
+  return { name: '', catalogExerciseId: null, notes: '', sets: [newSetRow(), newSetRow(), newSetRow()] };
 }
 
 const toText = (value: number | null): string => (value === null ? '' : String(value));
@@ -46,6 +48,7 @@ const toText = (value: number | null): string => (value === null ? '' : String(v
 export function exerciseToFormValues(exercise: DayExercise): ExerciseFormValues {
   return {
     name: exercise.name,
+    catalogExerciseId: exercise.catalogExerciseId,
     notes: exercise.notes ?? '',
     sets: exercise.sets.map((set) => ({
       key: set.id,
@@ -62,6 +65,7 @@ export function exerciseToFormValues(exercise: DayExercise): ExerciseFormValues 
 export function validateExercise(values: ExerciseFormValues): ValidationResult<DayExerciseInput> {
   return validateWith(dayExerciseInputSchema, {
     name: values.name,
+    catalogExerciseId: values.catalogExerciseId,
     notes: values.notes,
     sets: values.sets.map((set) => ({
       setType: set.setType,

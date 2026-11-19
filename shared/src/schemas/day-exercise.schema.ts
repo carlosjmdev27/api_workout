@@ -7,6 +7,7 @@ import {
   idListSchema,
   optionalText,
   requiredText,
+  uuidSchema,
 } from './common.schema.js';
 
 /**
@@ -28,6 +29,8 @@ export const plannedSetInputSchema = z
 
 export const dayExerciseInputSchema = z.strictObject({
   name: requiredText(LIMITS.NAME_MAX),
+  /** Optional link to the exercise catalog; null = free-text exercise. */
+  catalogExerciseId: uuidSchema.nullish(),
   notes: optionalText(LIMITS.NOTES_MAX),
   sets: z.array(plannedSetInputSchema).min(1).max(LIMITS.SETS_PER_EXERCISE_MAX),
 });

@@ -259,3 +259,31 @@ El entrenamiento tendrá un estado activo controlado por el usuario:
 - **Frontend**:
   - Crear componente `ActiveWorkoutTimer` basado en `started_at` (nunca con `setInterval` sumando `+1` a ciegas, para evitar congelamientos en móvil).
   - Implementar persistencia temporal en `localStorage` (`active_workout_draft`) para tolerancia a fallos/recargas accidentales en el gimnasio.
+
+9. Actualizacion v4
+
+---
+
+## 📚 Fase 6: Catálogo de Ejercicios y Autocompletado Inteligente
+
+### 1. Estrategia de Datos (Híbrida: Catálogo Base + Ejercicios Personalizados)
+Para evitar latencia en el gimnasio y dependencia de servicios externos caídos, se implementará una tabla local `ExerciseCatalog` poblada inicialmente con un catálogo curado en español (~120 ejercicios principales de gimnasio), permitiendo además que el usuario cree sus propios ejercicios personalizados (`is_custom = true`).
+
+- **Modelo `ExerciseCatalog`**:
+  - `id` (PK)
+  - `name` (string, único, indexado): Ej. *"Press de Banca con Barra"*, *"Sentadilla Libre"*, *"Jalón al Pecho"*.
+  - `muscle_group` (enum/string): `'Pecho'`, `'Espalda'`, `'Pierna'`, `'Hombro'`, `'Bíceps'`, `'Tríceps'`, `'Core'`, `'Cardio'`.
+  - `equipment` (string, nullable): `'Barra'`, `'Mancuernas'`, `'Polea'`, `'Máquina'`, `'Peso Corporal'`.
+  - `is_custom` (boolean, default `false`).
+
+### 2. Tareas Técnicas para Claude
+- **Backend**:
+  1. Crear la entidad/tabla `ExerciseCatalog` y vincular opcionalmente `DayExercise` mediante `catalog_exercise_id` (manteniendo compatibilidad con ejercicios existentes).
+  2. Crear un script de inicialización (`seedExercises.ts/js`) idempotente que cargue automáticamente una lista completa y bien categorizada de ~120 ejercicios reales de musculación en español si la tabla está vacía.
+  3. Crear endpoints:
+     - `GET /api/exercises/catalog?q=...&muscle=...`: Búsqueda rápida insensible a mayúsculas/acentos.
+     - `POST /api/exercises/catalog`: Permitir guardar un ejercicio nuevo creado por el usuario en el catálogo para futuras rutinas.
+- **Frontend**:
+  1. Sustituir el input de texto simple al añadir un ejercicio a una tabla por un **Combobox / Autocompletado con filtro por grupo muscular**.
+  2. Al escribir (ej. *"press"*), mostrar sugerencias agrupadas con etiqueta de grupo muscular y equipamiento.
+  3. Si el ejercicio escrito no existe en el catálogo, mostrar la opción rápida: *`+ Crear y añadir "[Nombre escrito]"`* para guardarlo al instante sin bloquear al usuario.

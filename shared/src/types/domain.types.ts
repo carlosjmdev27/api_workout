@@ -1,4 +1,14 @@
+import type { Equipment, MuscleGroup } from '../catalog.js';
 import type { SetType } from '../set-types.js';
+
+/** Entry of the exercise catalog (base list or created by the user). */
+export interface CatalogExercise {
+  id: string;
+  name: string;
+  muscleGroup: MuscleGroup;
+  equipment: Equipment | null;
+  isCustom: boolean;
+}
 
 /** Entities as returned by the API (camelCase; the DB uses snake_case). */
 
@@ -27,6 +37,8 @@ export interface PlannedSet {
 export interface DayExercise {
   id: string;
   workoutDayId: string;
+  /** Link to the catalog (null for free-text or pre-v4 exercises). */
+  catalogExerciseId: string | null;
   name: string;
   notes: string | null;
   order: number;

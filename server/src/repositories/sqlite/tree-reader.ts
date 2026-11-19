@@ -11,7 +11,7 @@ import {
 } from './rows.js';
 
 const DAY_COLS = 'd.id, d.routine_id, d.name, d.position';
-const EXERCISE_COLS = 'e.id, e.workout_day_id, e.name, e.notes, e.position';
+const EXERCISE_COLS = 'e.id, e.workout_day_id, e.catalog_exercise_id, e.name, e.notes, e.position';
 const SET_COLS =
   's.id, s.day_exercise_id, s.set_number, s.set_type, s.target_rep_min, s.target_rep_max, s.target_weight, s.target_rir';
 

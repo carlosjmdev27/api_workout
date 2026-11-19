@@ -24,6 +24,7 @@ Las entradas van en orden cronológico; la más reciente, al final.
 | Fase 4 v2: modo entrenamiento activo e historial | ✅ Completada |
 
 **Actualización §8 de la spec (v3: ciclo de vida de la sesión):** ✅ Completada (2026-11-19).
+**Actualización §9 de la spec (v4: catálogo de ejercicios y autocompletado):** ✅ Completada (2026-11-19).
 
 ### Pendientes / deuda técnica
 
@@ -35,6 +36,8 @@ Revisar esta lista al empezar cada tarea.
 | 2 | **Rate limiting** en la API. | Alta antes de exponer la API fuera de local | Fase 2 |
 | 3 | **Tests automatizados** en el repo. Hasta ahora las pruebas han sido scripts temporales. | Media | Fase 2 |
 | 5 | **Privacidad de los `.md` de la raíz** (detalle abajo). Decisión aplazada por el usuario el 2026-11-19. | Media: decidir antes de añadir información sensible a la documentación | Fase 4 v2 |
+| 6 | **Gestionar los ejercicios propios del catálogo** (renombrar, cambiar el grupo muscular, borrar). Hoy un ejercicio mal clasificado queda así para siempre. | Media | v4 |
+| 7 | **Progresión por ejercicio entre tablas** usando `catalog_exercise_id` (p. ej. "Press de banca" en Torso A y Torso B como un mismo ejercicio). El vínculo ya existe; falta la vista. | Baja (mejora) | v4 |
 | 4 | Avisos de `picomatch` (GHSA-fc5q-39xc-vjpf) en dependencias de desarrollo. El 2026-11-19 `npm audit` ya no los marca: **0 vulnerabilidades**, aunque seguimos en `picomatch@4.0.7`. No hubo cambio por nuestra parte; lo más probable es que se revisara el aviso. Vigilar en cada auditoría. | Baja | Fase 1 |
 
 **Detalle del pendiente #5: privacidad de `PROJECT_SPEC.md`, `PROJECT_DOC.md` e `INSTRUCCIONESDEEJECUCION.md`**
@@ -937,3 +940,92 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
 **Incidencias del test (no eran fallos de la app):**
 1. Se buscaba "70 kg × 10" en toda la página, pero aparece correctamente en la columna "Anterior". La comprobación se limitó a la sección de series.
 2. Una segunda ejecución igualaba la marca anterior, y **igualar no es récord**. El test ahora escribe las reps anteriores + 1.
+---
+
+## 2026-11-19 · Actualización §9 (v4): catálogo de ejercicios y autocompletado
+
+- Antes de empezar se subió la v3 a GitHub (`e8ae4d0`).
+
+### Decisiones (se siguió la spec, con mejoras que no cambian lo pedido)
+
+| Punto | Spec | Implementación | Motivo |
+|-------|------|----------------|--------|
+| Búsqueda sin acentos | `name` único e indexado | Columna extra **`name_normalized`** (minúsculas, sin acentos, espacios simples) con `UNIQUE`. La función `normalizeSearch` está en `@gym/shared`. | SQLite no ignora acentos. Así "Press banca" y "press bánca" son el mismo ejercicio. |
+| Algoritmo de búsqueda | "insensible a mayúsculas/acentos" | **Búsqueda por palabras** (`searchCatalog` en `@gym/shared`): todas las palabras escritas, en cualquier orden. Primero los que empiezan por lo escrito y después alfabético. | Con `LIKE '%frase%'`, "press banca" **no** encontraba "Press **de** banca con barra". Se detectó al revisar el código, antes de probar. |
+| Seed | Carga si la tabla está vacía | **Idempotente por nombre** (`INSERT OR IGNORE`), en cada arranque | Permite ampliar la lista sin tocar los ejercicios del usuario. Verificado: reiniciar no duplica nada. |
+| Combobox | `GET ?q=&muscle=` | El endpoint existe tal cual, pero el cliente **descarga el catálogo una vez** (caché de 10 min) y **filtra en local** con el mismo `searchCatalog` | Respuesta instantánea y tolerante a un wifi lento en el gimnasio |
+| Crear al vuelo | "+ Crear y añadir" | Mini-formulario en línea con el grupo muscular (**obligatorio y siempre elegido a mano**) y el equipamiento (opcional) | El grupo es obligatorio en el modelo (ver la incidencia más abajo) |
+
+### Backend
+
+- **Migración v4:**
+  - Tabla `exercise_catalog` (`id`, `name`, `name_normalized UNIQUE`, `muscle_group` con CHECK de los 8 grupos, `equipment` con CHECK de los 5 valores o NULL, `is_custom`, `created_at`), con índice por grupo muscular.
+  - `ALTER TABLE day_exercises ADD COLUMN catalog_exercise_id` → FK **ON DELETE SET NULL**. Los ejercicios existentes no cambian (NULL).
+- **Seed** (`repositories/sqlite/seed/`):
+  - `exercise-catalog.data.ts` con **120 ejercicios en español**: Pecho 17, Espalda 19, Pierna 25, Hombro 15, Bíceps 11, Tríceps 11, Core 13 y Cardio 9.
+  - `seedExercises.ts` lo carga en una transacción, desde `openDatabase` y justo después de las migraciones.
+- **Contrato:**
+  - `MUSCLE_GROUPS` y `EQUIPMENT`.
+  - `catalogExerciseInputSchema` (estricto: el cliente no puede enviar `isCustom`) y `catalogQuerySchema`.
+  - `dayExerciseInputSchema.catalogExerciseId` (uuid, opcional o null).
+  - `DayExercise.catalogExerciseId` y el tipo `CatalogExercise`.
+- **Endpoints:**
+
+  | Método y ruta | Respuesta |
+  |---------------|-----------|
+  | `GET /api/exercises/catalog?q=&muscle=` | 200 |
+  | `POST /api/exercises/catalog` | 201; **409 `CATALOG_EXERCISE_EXISTS`** si el nombre normalizado ya existe |
+
+  - Se montan **antes** de `/exercises/:exerciseId`.
+- **Repositorio:** el duplicado se detecta de forma atómica por la restricción `UNIQUE` (`SQLITE_CONSTRAINT_UNIQUE` → `null` → 409). No hay carrera entre comprobar e insertar.
+- **Al vincular un ejercicio de tabla** con un id de catálogo inexistente → **422 `INVALID_CATALOG_EXERCISE`**.
+- **Nuevo middleware `validateQuery`.** Express 5 tiene `req.query` de solo lectura, así que el valor ya validado se define como propiedad propia de la petición.
+- **Nuevo `ConflictError`** (409).
+
+### Frontend
+
+- **`ExerciseCombobox`** (patrón WAI-ARIA combobox + listbox) sustituye al campo de texto del nombre en el editor de ejercicios.
+  - **Filtros por grupo muscular** (Todos + los 8) y **sugerencias agrupadas por músculo**, con su equipamiento y la marca "Propio" en los creados por el usuario.
+  - **Teclado:** ↑/↓ (`aria-activedescendant`), Intro elige (sin enviar el formulario) y Esc cierra la lista (sin cerrar el modal).
+  - **"+ Crear y añadir «…»"** cuando el nombre no existe → `QuickCreateExercise`. Es un bloque en línea, no un `<form>`, porque iría anidado dentro del formulario del editor.
+  - Elegir una opción → vincula (`catalogExerciseId`). Escribir a mano → desvincula. **Si al salir del campo el texto coincide exactamente** con un ejercicio del catálogo, se vincula solo (p. ej. "  sentadilla FRONTAL " → "Sentadilla frontal").
+  - Debajo del campo se ve "Del catálogo · Pierna · Barra".
+- **Tarjetas de ejercicio** de la tabla: muestran el grupo muscular y el equipamiento si están vinculadas.
+- **Archivos:** `features/catalog/` (`hooks.ts`, `catalog-options.ts` con la lógica pura, y los componentes `ExerciseCombobox`, `CatalogListbox` y `QuickCreateExercise`) y `services/catalog.api.ts`.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` y `npm audit` | ✅ / 0 vulnerabilidades |
+| API v4 (base de datos temporal) | ✅ 15/15 + 4/4 tras reiniciar el servidor |
+| Flujos de interfaz con Edge vía CDP | ✅ 10/10 |
+| Capturas revisadas | Desplegable en escritorio y móvil; ejercicio creado y vinculado |
+| **Base de datos real** | Hash idéntico de los 3 archivos ✅. Las migraciones v3 y v4 y el seed se aplicarán al arrancar la API |
+
+**Qué cubre la prueba de la API:**
+- 120 ejercicios en 8 grupos.
+- Búsqueda "PRÉSS bánca".
+- Filtro por músculo y músculo inválido → 400.
+- `%` no actúa como comodín.
+- Alta de un ejercicio propio, duplicado → 409 y `isCustom` enviado → 400.
+- Vincular, ejercicio libre, id inexistente → 422, edición parcial que conserva el vínculo y desvincular con null.
+- Tras reiniciar: 120 ejercicios, sin duplicados y conservando los propios.
+
+**Qué cubren los flujos de interfaz:**
+- Búsqueda agrupada.
+- ↓ + Intro vincula.
+- Filtro por músculo.
+- Esc.
+- Crear al vuelo, pidiendo el grupo muscular.
+- La tarjeta muestra el grupo y el equipamiento.
+- Vínculo automático al salir del campo.
+- La API guarda los dos vínculos.
+- El ejercicio propio queda disponible para futuras rutinas.
+
+### ⚠️ Incidencia: fallo de diseño encontrado y corregido
+
+- **Diseño inicial:** el alta rápida preseleccionaba el grupo muscular del filtro activo.
+- **Lo que reveló el test:** el filtro "Bíceps" seguía puesto de una búsqueda anterior ("curl"), y con **un solo clic** se creó "Remo Kroc" como ejercicio de **bíceps**. Queda en el catálogo para siempre, porque no hay forma de editarlo (nuevo pendiente #6).
+- **Corrección:** el grupo muscular **siempre se elige a mano** al crear. Verificado: el primer clic sin grupo muestra "Elige el grupo muscular".
+- El ejercicio mal creado solo existía en la base de datos temporal de pruebas.
