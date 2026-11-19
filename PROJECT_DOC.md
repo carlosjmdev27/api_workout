@@ -812,3 +812,24 @@ El usuario añadió la sección 7 a la spec: jerarquía Rutina → Tabla → Eje
 - Por petición del usuario se eliminó de la base de datos real (`server/database/gym.sqlite`) su rutina de prueba **«PPL»**, que tenía 1 tabla, 1 ejercicio y ninguna sesión.
 - La API estaba apagada, así que se usó el propio repositorio de la app (`SqliteRoutineRepository.delete`) con las claves foráneas activas. Antes de borrar se comprobó que el id y el nombre coincidían.
 - Resultado: base de datos vacía, 0 filas en las 6 tablas.
+---
+
+## 2026-11-19 · Datos de demostración en la base de datos real
+
+Por petición del usuario se simularon una rutina y entrenamientos para ver la app funcionando, con la comparación entre sesiones.
+
+- **Cómo:** se arrancó solo la API sobre `server/database/gym.sqlite` (comprobando antes que los puertos estaban libres) y se rellenó **mediante la API real**, así que pasa por las mismas validaciones. Después se detuvo la API.
+- **Rutina «Torso-Pierna 4 días»:** su descripción indica que es de ejemplo y que se puede borrar.
+
+  | Tabla | Ejercicios | Tipos de serie que incluye |
+  |-------|------------|----------------------------|
+  | Torso A | 5 | Aproximación, top set, back-off, drop set… |
+  | Pierna A | 5 | Incluye rest-pause en curl femoral |
+  | Torso B | 5 | |
+  | Pierna B | 4 | |
+
+- **24 sesiones:** 6 semanas, del 5 de octubre al 13 de noviembre de 2026, cada tabla una vez por semana (lunes, martes, jueves y viernes).
+  - **Doble progresión:** el peso sube ~2 % por semana y las reps alternan entre el máximo y el máximo − 1.
+  - **Altibajos intencionados:** estancamiento en la sentadilla la semana 4, una back-off de banca sin completar y 4 sesiones con notas.
+  - **Esta semana no tiene sesiones**, para poder usar "Iniciar tabla" y ver la columna "Anterior" con los datos de la semana pasada.
+- **Para borrarla:** en la app, abrir la rutina → **Eliminar**. Se borran tablas, ejercicios e historial.
