@@ -804,3 +804,11 @@ El usuario añadió la sección 7 a la spec: jerarquía Rutina → Tabla → Eje
 1. Los valores esperados suponían la sesión de 100 kg, pero la sesión cortada por el reinicio era otra. Se ajustaron a los datos reales.
 2. Un botón "Serie 4" que no existe (las series se numeran por ejercicio). Al investigarlo se detectó y **corrigió un problema real de accesibilidad**: varios botones compartían la etiqueta "Serie 1 pendiente".
 3. En Edge headless la página no tiene el foco de la ventana, así que `focus()` no dispara el evento. Se resolvió con `Emulation.setFocusEmulationEnabled`.
+
+---
+
+## 2026-11-19 · Limpieza de datos de prueba del usuario
+
+- Por petición del usuario se eliminó de la base de datos real (`server/database/gym.sqlite`) su rutina de prueba **«PPL»**, que tenía 1 tabla, 1 ejercicio y ninguna sesión.
+- La API estaba apagada, así que se usó el propio repositorio de la app (`SqliteRoutineRepository.delete`) con las claves foráneas activas. Antes de borrar se comprobó que el id y el nombre coincidían.
+- Resultado: base de datos vacía, 0 filas en las 6 tablas.
