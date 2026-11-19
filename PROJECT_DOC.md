@@ -833,3 +833,10 @@ Por petición del usuario se simularon una rutina y entrenamientos para ver la a
   - **Altibajos intencionados:** estancamiento en la sentadilla la semana 4, una back-off de banca sin completar y 4 sesiones con notas.
   - **Esta semana no tiene sesiones**, para poder usar "Iniciar tabla" y ver la columna "Anterior" con los datos de la semana pasada.
 - **Para borrarla:** en la app, abrir la rutina → **Eliminar**. Se borran tablas, ejercicios e historial.
+---
+
+## 2026-11-19 · Eliminación de los datos de demostración
+
+- Por petición del usuario se eliminó la rutina de ejemplo «Torso-Pierna 4 días», con sus 4 tablas y 24 sesiones (el usuario no había añadido sesiones propias). Se usó el repositorio de la app, comprobando antes el id y el nombre.
+- La base de datos real queda vacía: 0 filas en las 6 tablas.
+- Se suben a GitHub todos los commits locales pendientes.
