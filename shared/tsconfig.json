@@ -9,6 +9,10 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    // Incremental: `tsc --watch` skips re-emitting unchanged files on startup, so the
+    // API (tsx watch) is not restarted a few seconds after `npm run dev`.
+    "incremental": true,
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
 
     "strict": true,
     "exactOptionalPropertyTypes": true,

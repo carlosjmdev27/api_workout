@@ -21,7 +21,7 @@ Las entradas van en orden cronológico; la más reciente, al final.
 | Paso previo: paquete `shared/` (npm workspaces) | ✅ Completado |
 | Fase 2 v2: migración de la base de datos y backend | ✅ Completada |
 | Fase 3 v2: constructor de tablas y series (frontend) | ✅ Completada |
-| Fase 4 v2: modo entrenamiento activo e historial | ⏳ Pendiente |
+| Fase 4 v2: modo entrenamiento activo e historial | ✅ Completada |
 
 ### Pendientes / deuda técnica
 
@@ -701,3 +701,96 @@ El usuario añadió la sección 7 a la spec: jerarquía Rutina → Tabla → Eje
 - **Fallo de verificación de Claude:** las comprobaciones de "base de datos real intacta" comparaban solo el hash de `gym.sqlite`. Con `journal_mode = WAL`, SQLite escribe primero en `gym.sqlite-wal`, así que esa comprobación no detectaba cambios.
   - **A partir de ahora:** verificar `PRAGMA user_version` y los tres archivos (`.sqlite`, `-wal` y `-shm`).
 - **Impacto:** ninguno real. Es el mismo estado que habría quedado al arrancar la API por primera vez tras la decisión de "empezar de cero".
+
+---
+
+## 2026-11-19 · Actualización §7: Fase 4 v2 (modo entrenamiento y progresión)
+
+- Antes de empezar se subió la Fase 3 v2 a GitHub (`3d3dc7d`).
+
+### Nuevas rutas de la web
+
+| URL | Vista |
+|-----|-------|
+| `/days/:dayId/workout` | **Entrenamiento activo** de una tabla |
+| `/days/:dayId/history` | **Historial y progresión** de esa tabla |
+
+- Acceso desde cada tabla: botones **Iniciar tabla** (solo si tiene ejercicios) e **Historial**.
+
+### Entrenamiento activo (`features/workout/`)
+
+- **Carga:** la estructura de la tabla (`GET /days/:id`) y su historial. La sesión más reciente es la que alimenta los **datos de la sesión anterior**.
+- **Columna "Anterior"** en cada serie, emparejada por ejercicio y número de serie, p. ej. "Anterior: 102,5 kg × 7".
+  - Si el tipo de serie cambió desde entonces, se indica entre corchetes ("[Top set]").
+  - Se marca "(no completada)" si aquella serie no se completó.
+- **Autocompletado:**
+  - Los campos vacíos muestran como sugerencia el peso y las reps de la sesión anterior; si no la hay, el peso objetivo y las reps mínimas.
+  - **Al marcar ✓ una serie con campos vacíos, se rellenan con la sugerencia.** Se pueden ajustar después.
+- **Cronómetro** visible. Al guardar, la duración se calcula sola (entre 1 y 600 min).
+- **Guardar:** se envían las series marcadas o con algún valor escrito.
+  - La validación usa `sessionInputSchema` (compartido) y los errores aparecen en su fila, p. ej. reps "6,5" → "Debe ser un número entero".
+  - Si no hay nada → "Marca o rellena al menos una serie".
+  - Tras guardar se va al historial con un aviso de confirmación.
+- **Borrador en `localStorage`** (`workout-draft.ts`):
+  - Lo escrito se guarda solo, en cuanto hay progreso, para no perderlo si se bloquea el móvil o se recarga la página.
+  - Al volver aparece "Se ha recuperado un entrenamiento sin guardar".
+  - Se ignoran los borradores de más de 12 h y se valida su forma con Zod.
+  - **Descartar** (con confirmación) borra el borrador. Guardar también lo borra.
+- **Barra inferior fija** con el progreso ("8/12 series"), Descartar y Guardar. Respeta la zona segura de los móviles con muesca.
+- **Accesibilidad:** el check de cada serie es un botón interruptor con una etiqueta única ("Press de banca, serie 2 hecha"); su estado lo indica `aria-pressed`.
+
+### Historial y progresión (`features/history/`)
+
+- **Progresión por ejercicio:** un selector con los ejercicios presentes en el historial.
+  - Agrupa por `dayExerciseId`, o por nombre si el ejercicio se borró de la plantilla.
+  - **Gráfico del e1RM estimado** (Epley, `estimateOneRepMax` de `@gym/shared`) con la mejor serie de cada sesión.
+  - **Tabla cronológica:** fecha, mejor serie, e1RM, **Δ e1RM** respecto a la sesión anterior, reps totales y **peso movido** (Σ peso × reps).
+- **Sesiones:** tarjetas con duración, series hechas, reps totales y peso movido.
+  - Se despliegan para ver cada serie (tipo, peso × reps, ✓ o "no completada") y las notas.
+  - Se puede **eliminar una sesión** con confirmación.
+- **Gráfico SVG propio, sin librerías nuevas**, siguiendo la guía de visualización de datos:
+  - Una sola serie, así que no hay leyenda; el título la nombra.
+  - Línea de 2 px, puntos de 8 px con anillo blanco de 2 px, rejilla de 1 px y valor al final de la línea.
+  - Ticks redondos (`niceTicks`) y eje temporal proporcional a la fecha.
+  - **Cruceta que se ajusta a la sesión más cercana**, con un tooltip donde el valor va primero.
+  - **Navegable con el teclado** (foco → última sesión, ←/→, Esc) y anunciado con `aria-live`.
+  - La tabla contiene los mismos datos, así que el tooltip nunca es la única vía para leerlos.
+  - Color índigo validado con `validate_palette.js` contra el fondo: **todas las comprobaciones correctas**.
+  - Ancho adaptable al contenedor (`useElementWidth` + `ResizeObserver`).
+
+### Otros cambios
+
+- **Claves de caché de las tablas** en `features/days/keys.ts`. `refreshRoutine()` invalida también `['days']`, así que editar una tabla refresca las pantallas de entrenamiento e historial. Guardar o borrar una sesión invalida el historial de esa tabla.
+- **`shared/tsconfig.json`: `incremental: true`** (`dist/.tsbuildinfo`, ignorado por git).
+  - **Arregla un problema de desarrollo:** al arrancar `npm run dev`, el *watch* de `shared` reescribía `dist/` y `tsx` reiniciaba la API unos segundos después. Una petición hecha en ese momento se cortaba (pasó al crear los datos de prueba).
+  - Verificado: 0 reinicios al arrancar, y la API sí se reinicia cuando cambia de verdad un archivo de `shared`.
+- **Formato:** `formatNumber`, `formatDateTime`, `formatShortDate` y `formatDuration`.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` | ✅ |
+| `npm audit` | ✅ 0 vulnerabilidades |
+| Archivo más grande | 139 líneas (`workout-model.ts`) |
+| Flujos de interfaz con Edge vía CDP (base de datos temporal y puertos comprobados antes) | ✅ 12/12 |
+| Capturas revisadas | Entrenamiento (escritorio y móvil a 390 px), historial (escritorio y móvil), tooltip con un movimiento de ratón real. Además, el gris de las sugerencias se oscureció un tono para que se lea mejor. |
+| **Base de datos real** | Hash de `gym.sqlite`, `-wal` y `-shm` idénticos antes y después de las pruebas, aplicando la lección de la Fase 3 v2 ✅ |
+
+**Flujos probados:**
+- Datos anteriores y sugerencias.
+- Guardar vacío → aviso.
+- Marcar ✓ autocompleta.
+- Recuperar el borrador tras recargar.
+- Descartar.
+- Error por fila.
+- Guardar → historial con aviso.
+- Un punto del gráfico por sesión.
+- Teclado en el gráfico.
+- Cambiar de ejercicio.
+- Eliminar una sesión.
+
+**Incidencias del test (no eran fallos de la app):**
+1. Los valores esperados suponían la sesión de 100 kg, pero la sesión cortada por el reinicio era otra. Se ajustaron a los datos reales.
+2. Un botón "Serie 4" que no existe (las series se numeran por ejercicio). Al investigarlo se detectó y **corrigió un problema real de accesibilidad**: varios botones compartían la etiqueta "Serie 1 pendiente".
+3. En Edge headless la página no tiene el foco de la ventana, así que `focus()` no dispara el evento. Se resolvió con `Emulation.setFocusEmulationEnabled`.

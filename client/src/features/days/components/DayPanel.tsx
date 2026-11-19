@@ -1,8 +1,9 @@
 import { useState, type JSX } from 'react';
-import { ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, History, Pencil, Play, Trash2 } from 'lucide-react';
 import type { WorkoutDay } from '@gym/shared';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { IconButton } from '../../../components/IconButton';
+import { LinkButton } from '../../../components/LinkButton';
 import { getErrorMessage } from '../../../utils/errors';
 import { pluralize } from '../../../utils/format';
 import { DayExercises } from '../../exercises/components/DayExercises';
@@ -47,6 +48,12 @@ export function DayPanel({ routineId, day, panelId, isFirst, isLast, moving, onM
           <p className="text-sm text-slate-500">
             {pluralize(day.exercises.length, 'ejercicio', 'ejercicios')} · {pluralize(setCount, 'serie', 'series')}
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {day.exercises.length > 0 && (
+              <LinkButton to={`/days/${day.id}/workout`} icon={Play} size="sm">Iniciar tabla</LinkButton>
+            )}
+            <LinkButton to={`/days/${day.id}/history`} icon={History} size="sm" variant="secondary">Historial</LinkButton>
+          </div>
         </div>
         <div className="flex shrink-0">
           <IconButton icon={ChevronLeft} label="Mover tabla a la izquierda" onClick={() => onMove(-1)} disabled={isFirst || moving} />
