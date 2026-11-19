@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
-import type { RoutineParams } from '../schemas/common.schema.js';
+import type { RoutineInput, RoutineUpdate } from '@gym/shared';
+import type { RoutineParams } from '../schemas/params.schema.js';
 import type { RoutineService } from '../services/routine.service.js';
-import type { CreateRoutineInput, UpdateRoutineInput } from '../types/routine.types.js';
 import { sendNoContent, sendSuccess } from './response.js';
 
 /**
@@ -24,16 +24,13 @@ export class RoutineController {
   };
 
   create = async (
-    req: Request<Record<string, string>, unknown, CreateRoutineInput>,
+    req: Request<Record<string, string>, unknown, RoutineInput>,
     res: Response,
   ): Promise<void> => {
     sendSuccess(res, 201, await this.service.create(req.body));
   };
 
-  update = async (
-    req: Request<RoutineParams, unknown, UpdateRoutineInput>,
-    res: Response,
-  ): Promise<void> => {
+  update = async (req: Request<RoutineParams, unknown, RoutineUpdate>, res: Response): Promise<void> => {
     sendSuccess(res, 200, await this.service.update(req.params.routineId, req.body));
   };
 

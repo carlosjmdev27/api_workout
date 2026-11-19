@@ -1,13 +1,18 @@
 {
   "name": "gym-routine-app",
   "private": true,
-  "description": "Monorepo root: orchestration scripts for /client and /server",
+  "description": "Monorepo root (npm workspaces): shared contract, server API and client web",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail --names api,web --prefix-colors blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
-    "build": "npm run build --prefix server && npm run build --prefix client",
-    "typecheck": "npm run typecheck --prefix server && npx --prefix client tsc -b client",
-    "lint": "npm run lint --prefix server && npm run lint --prefix client",
+    "dev": "npm run build -w shared && concurrently --kill-others-on-fail --names shared,api,web --prefix-colors magenta,blue,green \"npm run dev -w shared\" \"npm run dev -w server\" \"npm run dev -w client\"",
+    "install:all": "npm install",
+    "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
+    "typecheck": "npm run build -w shared && npm run typecheck -w server && npm run typecheck -w client",
+    "lint": "npm run lint -w shared && npm run lint -w server && npm run lint -w client",
     "check": "npm run typecheck && npm run lint && npm run build"
   },
   "devDependencies": {

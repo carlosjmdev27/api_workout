@@ -1,5 +1,3 @@
-// DUPLICATED in client/src/types/api.ts — keep both in sync (PROJECT_DOC pending #1).
-
 /** Standard envelope for every successful API response. */
 export interface ApiSuccess<T> {
   success: true;

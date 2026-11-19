@@ -1,7 +1,7 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { z } from 'zod';
 import { AppError } from '../errors/app-error.js';
-import type { ApiError } from '../types/api.types.js';
+import type { ApiError } from '@gym/shared';
 
 interface HttpErrorShape {
   status: number;

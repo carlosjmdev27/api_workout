@@ -14,45 +14,39 @@ Las entradas van en orden cronológico; la más reciente, al final.
 | Fase 3: Frontend core | ✅ Completada |
 | Fase 4: Verificación | ✅ Completada |
 
+**Actualización §7 de la spec (jerarquía avanzada e historial):**
+
+| Fase | Estado |
+|------|--------|
+| Paso previo: paquete `shared/` (npm workspaces) | ✅ Completado |
+| Fase 2 v2: migración de la base de datos y backend | ✅ Completada |
+| Fase 3 v2: constructor de tablas y series (frontend) | ⏳ Pendiente. ⚠️ **La web no funciona hasta completarla**: sigue usando la API antigua. |
+| Fase 4 v2: modo entrenamiento activo e historial | ⏳ Pendiente |
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
 
 | # | Pendiente | Prioridad | Origen |
 |---|-----------|-----------|--------|
-| 1 | **Unificar tipos y límites duplicados** entre `client` y `server` (detalle abajo). | Media: hacerlo antes de ampliar el modelo de datos | Fase 3 |
+| 1 | ~~Unificar tipos y límites duplicados~~ | ✅ **Resuelto en el server** con `@gym/shared` (2026-11-19). El `client` lo adoptará en la Fase 3 v2; hasta entonces conserva sus tipos antiguos del modelo v1. | Fase 3 |
 | 2 | **Rate limiting** en la API. | Alta antes de exponer la API fuera de local | Fase 2 |
 | 3 | **Tests automatizados** en el repo. Hasta ahora las pruebas han sido scripts temporales. | Media | Fase 2 |
-| 4 | Avisos de `picomatch` (ReDoS, GHSA-fc5q-39xc-vjpf) en dependencias **de desarrollo** de `client` y `server`. No hay versión corregida: todas hasta la 4.0.7, que es la última publicada, son vulnerables. Cuando salga una corregida, ejecutar `npm update` en `client` y `server`. | Baja: no llega a producción y la herramienta solo procesa patrones propios | Fase 1, ampliado en Fase 4 |
+| 4 | Avisos de `picomatch` (GHSA-fc5q-39xc-vjpf) en dependencias de desarrollo. El 2026-11-19 `npm audit` ya no los marca: **0 vulnerabilidades**, aunque seguimos en `picomatch@4.0.7`. No hubo cambio por nuestra parte; lo más probable es que se revisara el aviso. Vigilar en cada auditoría. | Baja | Fase 1 |
 
-**Detalle del pendiente #1: duplicados que hay que mantener sincronizados a mano**
-
-| Client | Server |
-|--------|--------|
-| `src/types/exercise.ts` | `src/types/exercise.types.ts` |
-| `src/types/routine.ts` | `src/types/routine.types.ts` |
-| `src/types/api.ts` | `src/types/api.types.ts` |
-| `src/utils/limits.ts` | `src/config/limits.ts` |
-
-- **Regla mientras tanto:** cualquier cambio en uno de estos archivos se replica en su pareja en el mismo commit. Todos llevan un comentario que lo recuerda.
-- **Solución prevista:**
-  1. Crear un paquete `shared/` con npm workspaces, que contenga los tipos, los límites y, opcionalmente, los esquemas Zod.
-  2. Importarlo desde `client` y `server`.
-  3. Así la validación del formulario podría reutilizar los mismos esquemas que la API.
-
-**Arrancar en local** (desde la raíz). Estos comandos se verificaron en un clon limpio durante la Fase 4:
+**Arrancar en local** (desde la raíz, monorepo con npm workspaces):
 
 ```bash
 # Solo la primera vez (o tras clonar)
-npm run install:all                          # instala raíz + server + client
+npm install                                  # instala shared + server + client (un solo node_modules en la raíz)
 cp server/.env.example server/.env           # PowerShell: Copy-Item server\.env.example server\.env
 cp client/.env.example client/.env           # PowerShell: Copy-Item client\.env.example client\.env
 
 # Cada día
-npm run dev        # API (http://localhost:3000/api) y web (http://localhost:5173) en paralelo; Ctrl+C para parar
+npm run dev        # compila shared y arranca shared (watch) + API (http://localhost:3000/api) + web (http://localhost:5173)
 
 # Antes de cada commit
-npm run check      # typecheck + lint + build de server y client
+npm run check      # typecheck + lint + build de shared, server y client
 ```
 
 La guía detallada está en `INSTRUCCIONESDEEJECUCION.md`, que es solo local.
@@ -505,3 +499,119 @@ Ver la tabla de pendientes:
   3. #3 tests con Vitest + supertest, al final para que cubran también el paquete compartido.
 - **Obligatorio antes de exponer la API fuera de `localhost`:** resolver el #2.
 - Se suben a GitHub los commits de la Fase 4 (`3b29e05`, `5f5772f`) y esta entrada.
+
+---
+
+## 2026-11-19 · Actualización §7: Paso previo y Fase 2 v2 (backend)
+
+El usuario añadió la sección 7 a la spec: jerarquía Rutina → Tabla → Ejercicio → Serie, historial de sesiones y modo entrenamiento.
+
+**Decisiones del usuario:**
+1. Crear primero el paquete `shared/`, lo que resuelve el pendiente #1.
+2. **Empezar de cero:** la base de datos antigua tenía 1 rutina («PIERNA») con 1 ejercicio, y se descartan, no se convierten.
+
+### Paso previo: monorepo con npm workspaces + `@gym/shared`
+
+- **Raíz:** `package.json` con `"workspaces": ["shared","server","client"]`.
+  - Un solo `node_modules` y un solo `package-lock.json` en la raíz. Se borraron los de `server/` y `client/`.
+  - `npm install` instala todo; `install:all` se mantiene como alias.
+- **`shared/`** (paquete `@gym/shared`, ESM, compilado a `dist/` con declaraciones `.d.ts`):
+
+  | Archivo | Contenido |
+  |---------|-----------|
+  | `limits.ts` | Todos los límites de negocio |
+  | `set-types.ts` | `SET_TYPES` (`warmup`, `normal`, `topset`, `backoff`, `restpause`, `dropset`) y `isSetType` |
+  | `schemas/*.schema.ts` | Esquemas Zod de rutina, tabla, ejercicio con series y sesión. Los tipos de entrada salen de `z.infer`, así que no se duplican. |
+  | `types/domain.types.ts` | Entidades que devuelve la API |
+  | `types/api.types.ts` | Formato `{ success, data \| error }` |
+  | `progression.ts` | `estimateOneRepMax` (Epley), para la Fase 4 |
+
+- **Por qué compilado y no código fuente TS:** `node dist/server.js` en producción no puede ejecutar TypeScript.
+  - En desarrollo, `npm run dev` compila `shared` primero y luego lo deja en modo *watch* junto a la API y la web (3 procesos: `shared`, `api`, `web`).
+  - `typecheck` y `build` compilan `shared` antes que el resto.
+- **Una sola copia de `zod`** en todo el monorepo. Es necesario para que `instanceof ZodError` funcione en el manejador de errores.
+- **Server:** se borraron sus tipos, límites y esquemas propios; ahora importa todo de `@gym/shared`. Solo conserva los esquemas de parámetros de URL (`schemas/params.schema.ts`) y el tipo interno `NewSessionRecord`.
+
+### Modelo de datos (migración v2)
+
+**Tablas nuevas:**
+
+| Tabla | Relación |
+|-------|----------|
+| `routines` | Raíz |
+| `workout_days` | Pertenece a `routines` (CASCADE) |
+| `day_exercises` | Pertenece a `workout_days` (CASCADE) |
+| `planned_sets` | Pertenece a `day_exercises` (CASCADE) |
+| `workout_sessions` | Pertenece a `workout_days` (CASCADE) |
+| `logged_sets` | Pertenece a `workout_sessions` (CASCADE). `day_exercise_id` es **ON DELETE SET NULL** |
+
+**Integridad en la base de datos:**
+- `CHECK` de `set_type` (lista cerrada).
+- `target_rep_min > 0` y `min <= max`.
+- Pesos, reps y RIR ≥ 0.
+- `UNIQUE(day_exercise_id, set_number)`.
+- Índices por padre y posición.
+
+**Decisiones de modelo:**
+- **API en camelCase** (`setNumber`, `targetRepMin`…); la base de datos en snake_case, como pide la spec.
+- **`setNumber` lo asigna el servidor** (1..n según la posición en el array `sets`). El cliente no lo envía, así que nunca hay huecos ni duplicados.
+- **Editar las series de un ejercicio = sustituirlas todas** en una transacción (`PUT /exercises/:id` con `sets`). Si se envían solo `name` o `notes`, las series no se tocan.
+- **El historial sobrevive a los cambios de la plantilla:** cada `logged_set` guarda una copia del nombre y la posición del ejercicio. Si se borra el ejercicio de la tabla, sus registros quedan con `dayExerciseId: null` pero conservan nombre, peso y reps.
+- **Borrar una tabla borra su historial** (cascade), igual que borrar la rutina. Se hace con confirmación en la UI.
+- **Migración v2 inmutable:** la lista de `set_type` del `CHECK` está copiada literalmente en el SQL, no leída de `SET_TYPES`. Si se añade un tipo nuevo, hará falta una migración v3.
+- **Borrar una rutina** ya no borra los hijos uno a uno: con 5 niveles se confía en `ON DELETE CASCADE`, que es SQL estándar y también existe en PostgreSQL.
+
+### Endpoints (`/api`)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET/POST | `/routines` | Lista (`dayCount`) / crear (`name`, `description`) |
+| GET/PUT/DELETE | `/routines/:routineId` | Árbol completo días → ejercicios → series / editar / borrar todo |
+| GET/POST | `/routines/:routineId/days` | Tablas de la rutina / añadir tabla (`name`) |
+| PUT | `/routines/:routineId/days/order` | `{ dayIds }` con todas las tablas |
+| GET/PUT/DELETE | `/days/:dayId` | Tabla con ejercicios, series y `routineName` / renombrar / borrar |
+| POST | `/days/:dayId/exercises` | Ejercicio con `sets[]` (1..20), atómico |
+| PUT | `/days/:dayId/exercises/order` | `{ exerciseIds }` |
+| PUT/DELETE | `/exercises/:exerciseId` | Parcial; `sets` sustituye todas las series |
+| POST | `/sessions` | `{ workoutDayId, completedAt?, durationMinutes?, notes?, sets[] }` |
+| GET | `/days/:dayId/history` | Últimas 50 sesiones, de la más reciente a la más antigua, con sus series |
+| DELETE | `/sessions/:sessionId` | Borrar una sesión registrada por error |
+
+**Reglas de negocio** (`services/`):
+
+| Regla | Código de error |
+|-------|-----------------|
+| Máximo 14 tablas por rutina | `DAY_LIMIT_REACHED` |
+| Máximo 30 ejercicios por tabla | `EXERCISE_LIMIT_REACHED` |
+| Reordenar exige enviar todos los elementos | `INVALID_DAY_ORDER` / `INVALID_EXERCISE_ORDER` |
+| Una sesión solo registra ejercicios de su propia tabla | `INVALID_SESSION_EXERCISE` |
+| `completedAt` no puede ser futuro (tolerancia de 5 min) | `INVALID_SESSION_DATE` |
+
+**Nuevos 404:** `DAY_NOT_FOUND` y `SESSION_NOT_FOUND`.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` (shared + server + client) | ✅ |
+| `npm audit` | ✅ 0 vulnerabilidades (incluidas las de desarrollo) |
+| Migración v1 → v2 sobre una **copia** de `gym.sqlite` | ✅ versión 2, 6 tablas, la tabla antigua eliminada, `foreign_key_check` e `integrity_check` correctos. La base de datos real no cambió (hash idéntico). |
+| Smoke test de la API v2 (base de datos temporal, puertos comprobados antes) | ✅ 32/32 |
+| Repositorios directos | ✅ Sin filas huérfanas en las 6 tablas tras las cascadas. Sustituir las series es atómico: un fallo de la base de datos a mitad deja intactos el nombre y las series anteriores. |
+| Archivo más grande | 149 líneas (`rows.ts`) |
+
+**Qué cubre el smoke test:**
+- Jerarquía completa y series tipadas.
+- Validaciones: `min > max` (con la ruta del error en el campo), tipo de serie desconocido, sin series, `min = 0`.
+- Reordenar tablas y ejercicios.
+- Sesiones e historial ordenado.
+- Reglas 422 de sesión y series duplicadas.
+- El historial conserva los datos tras borrar el ejercicio.
+- **La sesión máxima (60 series) ocupa 9.330 bytes, dentro del límite de 10 KB.**
+- Errores 404 y 400 y cascadas.
+
+### Estado intermedio
+
+- La **web (client) no funciona** hasta completar la Fase 3 v2, porque llama a los endpoints del modelo antiguo, que ya no existen. Compila, pero falla en tiempo de ejecución.
+- La API sí se puede probar (ver `INSTRUCCIONESDEEJECUCION.md`, sección 4b).
+- Cuando arranque, la API aplicará la migración v2 a `server/database/gym.sqlite`, que quedará vacía.

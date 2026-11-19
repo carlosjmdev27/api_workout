@@ -3,13 +3,19 @@ import type { Express } from 'express';
 import { createApp } from './app.js';
 import type { Env } from './config/env.js';
 import { SERVER_ROOT } from './config/paths.js';
-import { ExerciseController } from './controllers/exercise.controller.js';
+import { DayExerciseController } from './controllers/day-exercise.controller.js';
 import { RoutineController } from './controllers/routine.controller.js';
+import { SessionController } from './controllers/session.controller.js';
+import { WorkoutDayController } from './controllers/workout-day.controller.js';
 import { openDatabase } from './repositories/sqlite/connection.js';
-import { SqliteExerciseRepository } from './repositories/sqlite/sqlite-exercise.repository.js';
+import { SqliteDayExerciseRepository } from './repositories/sqlite/sqlite-day-exercise.repository.js';
 import { SqliteRoutineRepository } from './repositories/sqlite/sqlite-routine.repository.js';
-import { ExerciseService } from './services/exercise.service.js';
+import { SqliteSessionRepository } from './repositories/sqlite/sqlite-session.repository.js';
+import { SqliteWorkoutDayRepository } from './repositories/sqlite/sqlite-workout-day.repository.js';
+import { DayExerciseService } from './services/day-exercise.service.js';
 import { RoutineService } from './services/routine.service.js';
+import { SessionService } from './services/session.service.js';
+import { WorkoutDayService } from './services/workout-day.service.js';
 
 export interface Container {
   app: Express;
@@ -18,22 +24,25 @@ export interface Container {
 
 /**
  * Composition root: the only place that knows the concrete implementations.
- * Switching to PostgreSQL means swapping the two repositories built here.
+ * Switching to PostgreSQL means swapping the four repositories built here.
  */
 export function buildContainer(env: Env): Container {
   const db = openDatabase(resolve(SERVER_ROOT, env.DATABASE_PATH));
 
-  const routineRepository = new SqliteRoutineRepository(db);
-  const exerciseRepository = new SqliteExerciseRepository(db);
-
-  const routineService = new RoutineService(routineRepository);
-  const exerciseService = new ExerciseService(exerciseRepository, routineRepository);
+  const routineService = new RoutineService(new SqliteRoutineRepository(db));
+  const dayService = new WorkoutDayService(new SqliteWorkoutDayRepository(db), routineService);
+  const exerciseService = new DayExerciseService(new SqliteDayExerciseRepository(db), dayService);
+  const sessionService = new SessionService(new SqliteSessionRepository(db), dayService);
 
   const app = createApp({
     corsOrigin: env.CORS_ORIGIN,
     isProduction: env.NODE_ENV === 'production',
-    routineController: new RoutineController(routineService),
-    exerciseController: new ExerciseController(exerciseService),
+    controllers: {
+      routine: new RoutineController(routineService),
+      workoutDay: new WorkoutDayController(dayService),
+      dayExercise: new DayExerciseController(exerciseService),
+      session: new SessionController(sessionService),
+    },
   });
 
   return { app, close: () => db.close() };

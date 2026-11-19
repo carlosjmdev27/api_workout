@@ -155,3 +155,60 @@ Fase 2 (Base de Datos y Backend Core): Configura SQLite, crea las interfaces de 
 Fase 3 (Frontend Core): Configura la capa de servicios API en React, los tipos compartidos y construye las vistas principales: listado de rutinas, vista detallada de rutina y formulario de creación/edición de rutinas y ejercicios con diseño limpio y responsivo.
 
 Fase 4 (Verificación): Proporciona los comandos exactos para levantar ambos entornos en paralelo y realiza una revisión final de seguridad y limpieza del código generado.
+
+7. Actualizacion de App para nuevas funcionalidades
+
+---
+
+## 🔄 Refactorización Mayor: Jerarquía Avanzada e Historial de Progresión
+
+### 1. Nuevo Modelo de Dominio (Jerarquía de 4 Niveles)
+Se abandona la estructura plana (`Rutina -> Ejercicios`) y se migra a una jerarquía relacional estricta de **Plantillas vs. Sesiones Registradas**:
+
+1. **Rutina (`Routine`)**: Contenedor principal o mesociclo (ej. *"Torso-Pierna 4 días"*).
+2. **Tabla / Día de Entrenamiento (`WorkoutDay`)**: Pertenece a una `Routine`. Una rutina puede tener N tablas independientes (ej. *"Torso A"*, *"Pierna A"*, *"Torso B"*).
+3. **Ejercicio en Tabla (`DayExercise`)**: Pertenece a un `WorkoutDay`. Contiene el nombre del ejercicio, orden y notas técnicas.
+4. **Serie Planificada (`PlannedSet`)**: Pertenece a un `DayExercise`. Cada serie es una entidad independiente con:
+   - `set_number` (int): Orden de la serie (1, 2, 3...).
+   - `set_type` (enum): `'warmup'` (aproximación), `'topset'` (serie efectiva pesada), `'backoff'` (serie de descarga), `'restpause'`, `'dropset'`, `'normal'`.
+   - `target_rep_min` (int) y `target_rep_max` (int): Rango de repeticiones objetivo (ej. `6` a `8` reps).
+   - `target_weight` (float, nullable): Peso objetivo o de referencia en kg.
+   - `target_rir` (int, nullable): Opcional, repeticiones en recámara.
+
+### 2. Modelo de Historial y Progresión (Logs)
+Para comparar el rendimiento sin sobrescribir la plantilla base:
+- **Sesión Ejecutada (`WorkoutSessionLog`)**: Vinculada a un `workout_day_id`, con fecha (`completed_at`) y duración/notas.
+- **Serie Realizada (`LoggedSet`)**: Vinculada a `WorkoutSessionLog` y al ejercicio correspondiente. Guarda `set_number`, `set_type`, `actual_weight`, `actual_reps` y si se completó.
+
+---
+
+### 📋 Plan de Ejecución por Fases (Para Claude)
+
+#### Fase 2: Migración de Base de Datos y Refactorización del Backend
+- **Objetivo**: Actualizar el esquema de persistencia (SQLite/JSON) y los repositorios manteniendo la separación limpia (`Controller -> Service -> Repository`).
+- **Tareas**:
+  1. Rediseñar las tablas/entidades para soportar `Routine -> WorkoutDay -> DayExercise -> PlannedSet`.
+  2. Crear las tablas de historial `WorkoutSessionLog` y `LoggedSet`.
+  3. Actualizar los validadores (ej. Zod/Joi) en el backend para validar rangos (`target_rep_min <= target_rep_max`) y tipos de serie permitidos.
+  4. Exponer endpoints REST limpios:
+     - CRUD de Rutinas y sus Tablas (`GET/POST /api/routines/:id/days`).
+     - CRUD de Ejercicios y sus Series independientes (`POST /api/days/:dayId/exercises` con array de `sets`).
+     - Endpoints de historial: `POST /api/sessions` (guardar entrenamiento) y `GET /api/days/:dayId/history` (obtener sesiones pasadas de esa tabla específica).
+
+#### Fase 3: Constructor de Tablas y Series Independientes (Frontend)
+- **Objetivo**: Permitir configurar rutinas complejas con gran agilidad visual.
+- **Tareas**:
+  1. **Vista Detalle de Rutina**: Mostrar pestañas o tarjetas por cada **Tabla** (ej. *Torso*, *Pierna*) con botón para añadir/renombrar/eliminar tablas dentro de la rutina.
+  2. **Editor de Ejercicio por Serie**: Al añadir o editar un ejercicio dentro de una tabla, permitir añadir/quitar filas individuales para cada serie (`+ Añadir serie`).
+  3. Cada fila de serie debe permitir seleccionar:
+     - Etiqueta visual / selector de **Tipo de Serie** (`Top Set`, `Back-off`, `Rest-Pause`, `Aproximación`, `Normal`) con códigos de color sutiles.
+     - Inputs numéricos compactos para **Peso (kg)**, **Reps Mín** y **Reps Máx**.
+  4. Permitir duplicar rápidamente la configuración de una serie anterior para agilizar la creación.
+
+#### Fase 4: Modo Entrenamiento Activo y Comparativa de Progresión
+- **Objetivo**: Ejecutar una tabla en el gimnasio viendo qué se hizo la última vez y guardando el progreso.
+- **Tareas**:
+  1. **Vista "Iniciar Tabla"**: Carga la estructura de `DayExercise` y `PlannedSet` de esa tabla en un formulario de entrenamiento activo.
+  2. **Columna "Anterior" (Ghost Data)**: Consultar automáticamente la última `WorkoutSessionLog` de esa misma tabla y mostrar junto a cada serie lo que se levantó en la sesión previa (ej. *"Anterior: 100kg x 7 [Top Set]"*).
+  3. **Autocompletado y Guardado**: Permitir marcar cada serie con un check al completarla, ajustar peso/reps reales y guardar la sesión completa en el historial.
+  4. **Vista de Historial por Tabla / Ejercicio**: Mostrar una comparativa cronológica (tabla o gráfico simple) de sesiones pasadas de esa misma tabla para visualizar la sobrecarga progresiva (peso movido, repeticiones totales y e1RM estimado).

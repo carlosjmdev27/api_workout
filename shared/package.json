@@ -1,0 +1,29 @@
+{
+  "name": "@gym/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Contract shared by client and server: domain types, limits and Zod schemas",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^16.5.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.73.0"
+  }
+}

@@ -1,10 +1,10 @@
 import type {
-  CreateRoutineInput,
   Routine,
+  RoutineDetail,
+  RoutineInput,
   RoutineSummary,
-  RoutineWithExercises,
-  UpdateRoutineInput,
-} from '../types/routine.types.js';
+  RoutineUpdate,
+} from '@gym/shared';
 
 /**
  * Persistence contract for routines. Async on purpose: the SQLite
@@ -12,11 +12,11 @@ import type {
  */
 export interface RoutineRepository {
   findAll(): Promise<RoutineSummary[]>;
-  findById(id: string): Promise<RoutineWithExercises | null>;
+  /** Routine with its full tree: days -> exercises -> planned sets. */
+  findById(id: string): Promise<RoutineDetail | null>;
   exists(id: string): Promise<boolean>;
-  /** Creates the routine and its exercises atomically. */
-  create(input: CreateRoutineInput): Promise<RoutineWithExercises>;
-  update(id: string, input: UpdateRoutineInput): Promise<Routine | null>;
-  /** Deletes the routine and its exercises atomically. */
+  create(input: RoutineInput): Promise<RoutineDetail>;
+  update(id: string, input: RoutineUpdate): Promise<Routine | null>;
+  /** Deletes the routine and everything below it (days, exercises, sets, history). */
   delete(id: string): Promise<boolean>;
 }
