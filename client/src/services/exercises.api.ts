@@ -1,22 +1,18 @@
-import type { Exercise, ExerciseInput, ExerciseUpdate } from '../types/exercise';
+import type { DayExercise, DayExerciseInput, DayExerciseUpdate } from '@gym/shared';
 import { request, requestVoid } from './http-client';
 
-const basePath = (routineId: string): string =>
-  `/routines/${encodeURIComponent(routineId)}/exercises`;
-
-const exercisePath = (routineId: string, exerciseId: string): string =>
-  `${basePath(routineId)}/${encodeURIComponent(exerciseId)}`;
+const exercisePath = (exerciseId: string): string => `/exercises/${encodeURIComponent(exerciseId)}`;
+const dayExercisesPath = (dayId: string): string => `/days/${encodeURIComponent(dayId)}/exercises`;
 
 export const exercisesApi = {
-  create: (routineId: string, input: ExerciseInput): Promise<Exercise> =>
-    request('POST', basePath(routineId), input),
+  create: (dayId: string, input: DayExerciseInput): Promise<DayExercise> =>
+    request('POST', dayExercisesPath(dayId), input),
 
-  update: (routineId: string, exerciseId: string, input: ExerciseUpdate): Promise<Exercise> =>
-    request('PUT', exercisePath(routineId, exerciseId), input),
+  update: (exerciseId: string, input: DayExerciseUpdate): Promise<DayExercise> =>
+    request('PUT', exercisePath(exerciseId), input),
 
-  remove: (routineId: string, exerciseId: string): Promise<void> =>
-    requestVoid('DELETE', exercisePath(routineId, exerciseId)),
+  remove: (exerciseId: string): Promise<void> => requestVoid('DELETE', exercisePath(exerciseId)),
 
-  reorder: (routineId: string, exerciseIds: string[]): Promise<Exercise[]> =>
-    request('PUT', `${basePath(routineId)}/order`, { exerciseIds }),
+  reorder: (dayId: string, exerciseIds: string[]): Promise<DayExercise[]> =>
+    request('PUT', `${dayExercisesPath(dayId)}/order`, { exerciseIds }),
 };

@@ -1,74 +1,74 @@
-import type { Exercise, ExerciseInput } from '../../types/exercise';
-import type { FormErrors } from '../../types/form';
-import { LIMITS } from '../../utils/limits';
 import {
-  checkNumber,
-  checkText,
-  compactErrors,
-  parseDecimal,
-  toOptionalText,
-} from '../../utils/validation';
+  dayExerciseInputSchema,
+  type DayExercise,
+  type DayExerciseInput,
+  type SetType,
+} from '@gym/shared';
+import { parseDecimal, validateWith, type ValidationResult } from '../../utils/validation';
 
-/** Raw form state: every field is the string typed by the user. */
+/** One editable set row. Numeric fields are kept as typed text until submit. */
+export interface SetRowValues {
+  key: string; // Stable React key: rows have no server id while editing.
+  setType: SetType;
+  targetWeight: string;
+  targetRepMin: string;
+  targetRepMax: string;
+  targetRir: string;
+}
+
+export type SetNumberField = 'targetWeight' | 'targetRepMin' | 'targetRepMax' | 'targetRir';
+
 export interface ExerciseFormValues {
   name: string;
-  sets: string;
-  reps: string;
-  weight: string;
-  restSeconds: string;
   notes: string;
+  sets: SetRowValues[];
 }
 
-export type ExerciseField = keyof ExerciseFormValues;
-
-export const EMPTY_EXERCISE: ExerciseFormValues = {
-  name: '',
-  sets: '3',
-  reps: '10',
-  weight: '',
-  restSeconds: '',
-  notes: '',
+const DEFAULT_SET: Omit<SetRowValues, 'key'> = {
+  setType: 'normal',
+  targetWeight: '',
+  targetRepMin: '8',
+  targetRepMax: '12',
+  targetRir: '',
 };
 
-export function exerciseToFormValues(exercise: Exercise): ExerciseFormValues {
+/** New row; when `from` is given it copies its configuration (duplicate / add). */
+export function newSetRow(from?: SetRowValues): SetRowValues {
+  return { ...(from ?? DEFAULT_SET), key: crypto.randomUUID() };
+}
+
+export function emptyExercise(): ExerciseFormValues {
+  return { name: '', notes: '', sets: [newSetRow(), newSetRow(), newSetRow()] };
+}
+
+const toText = (value: number | null): string => (value === null ? '' : String(value));
+
+export function exerciseToFormValues(exercise: DayExercise): ExerciseFormValues {
   return {
     name: exercise.name,
-    sets: String(exercise.sets),
-    reps: exercise.reps,
-    weight: exercise.weight === null ? '' : String(exercise.weight),
-    restSeconds: exercise.restSeconds === null ? '' : String(exercise.restSeconds),
     notes: exercise.notes ?? '',
+    sets: exercise.sets.map((set) => ({
+      key: set.id,
+      setType: set.setType,
+      targetWeight: toText(set.targetWeight),
+      targetRepMin: String(set.targetRepMin),
+      targetRepMax: String(set.targetRepMax),
+      targetRir: toText(set.targetRir),
+    })),
   };
 }
 
-export function validateExercise(values: ExerciseFormValues): FormErrors<ExerciseFormValues> {
-  return compactErrors<ExerciseFormValues>({
-    name: checkText(values.name, { max: LIMITS.EXERCISE_NAME_MAX, required: true }),
-    sets: checkNumber(values.sets, {
-      min: 1,
-      max: LIMITS.EXERCISE_SETS_MAX,
-      integer: true,
-      required: true,
-    }),
-    reps: checkText(values.reps, { max: LIMITS.EXERCISE_REPS_MAX, required: true }),
-    weight: checkNumber(values.weight, { min: 0, max: LIMITS.EXERCISE_WEIGHT_MAX_KG }),
-    restSeconds: checkNumber(values.restSeconds, {
-      min: 0,
-      max: LIMITS.EXERCISE_REST_MAX_SECONDS,
-      integer: true,
-    }),
-    notes: checkText(values.notes, { max: LIMITS.EXERCISE_NOTES_MAX }),
+/** Validates with the API schema. Errors are keyed like "sets.2.targetRepMax". */
+export function validateExercise(values: ExerciseFormValues): ValidationResult<DayExerciseInput> {
+  return validateWith(dayExerciseInputSchema, {
+    name: values.name,
+    notes: values.notes,
+    sets: values.sets.map((set) => ({
+      setType: set.setType,
+      targetWeight: parseDecimal(set.targetWeight),
+      targetRepMin: parseDecimal(set.targetRepMin),
+      targetRepMax: parseDecimal(set.targetRepMax),
+      targetRir: parseDecimal(set.targetRir),
+    })),
   });
-}
-
-/** Converts already-validated form values into the API payload. */
-export function toExerciseInput(values: ExerciseFormValues): ExerciseInput {
-  return {
-    name: values.name.trim(),
-    sets: parseDecimal(values.sets) ?? 0,
-    reps: values.reps.trim(),
-    weight: parseDecimal(values.weight),
-    restSeconds: parseDecimal(values.restSeconds),
-    notes: toOptionalText(values.notes),
-  };
 }

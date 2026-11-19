@@ -1,4 +1,4 @@
-import type { ApiErrorBody, ApiErrorDetail, ApiSuccess } from '../types/api';
+import type { ApiError as ApiErrorBody, ApiErrorDetail, ApiSuccess } from '@gym/shared';
 
 function readApiUrl(): string {
   const url = import.meta.env.VITE_API_URL;

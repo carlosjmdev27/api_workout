@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { ErrorState, LoadingState } from '../../../components/StatusViews';
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle';
 import { getErrorMessage } from '../../../utils/errors';
-import { ExercisesSection } from '../../exercises/components/ExercisesSection';
+import { DaysSection } from '../../days/components/DaysSection';
 import { RoutineDetailHeader } from '../components/RoutineDetailHeader';
 import { useRoutineQuery } from '../hooks';
 
@@ -18,9 +18,9 @@ export function RoutineDetailPage(): JSX.Element {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       <RoutineDetailHeader routine={data} />
-      <ExercisesSection routineId={data.id} exercises={data.exercises} />
+      <DaysSection routine={data} />
     </div>
   );
 }

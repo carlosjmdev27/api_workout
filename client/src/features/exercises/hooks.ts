@@ -1,33 +1,26 @@
-import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { DayExerciseInput } from '@gym/shared';
 import { exercisesApi } from '../../services/exercises.api';
-import type { Exercise, ExerciseInput, ExerciseUpdate } from '../../types/exercise';
-import type { RoutineWithExercises } from '../../types/routine';
-import { routineKeys } from '../routines/hooks';
+import { refreshRoutine } from '../routines/hooks';
 
-/** Exercises live inside the routine detail; refresh it and the list counts. */
-function refreshRoutine(queryClient: QueryClient, routineId: string): void {
-  void queryClient.invalidateQueries({ queryKey: routineKeys.detail(routineId) });
-  void queryClient.invalidateQueries({ queryKey: routineKeys.list });
-}
-
-export function useCreateExercise(routineId: string) {
+/** Mutations on the exercises of a day. All refresh the parent routine tree. */
+export function useCreateExercise(routineId: string, dayId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: ExerciseInput) => exercisesApi.create(routineId, input),
+    mutationFn: (input: DayExerciseInput) => exercisesApi.create(dayId, input),
     onSuccess: () => refreshRoutine(queryClient, routineId),
   });
 }
 
 interface UpdateVariables {
   exerciseId: string;
-  input: ExerciseUpdate;
+  input: DayExerciseInput;
 }
 
 export function useUpdateExercise(routineId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ exerciseId, input }: UpdateVariables) =>
-      exercisesApi.update(routineId, exerciseId, input),
+    mutationFn: ({ exerciseId, input }: UpdateVariables) => exercisesApi.update(exerciseId, input),
     onSuccess: () => refreshRoutine(queryClient, routineId),
   });
 }
@@ -35,21 +28,15 @@ export function useUpdateExercise(routineId: string) {
 export function useDeleteExercise(routineId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (exerciseId: string) => exercisesApi.remove(routineId, exerciseId),
+    mutationFn: (exerciseId: string) => exercisesApi.remove(exerciseId),
     onSuccess: () => refreshRoutine(queryClient, routineId),
   });
 }
 
-export function useReorderExercises(routineId: string) {
+export function useReorderExercises(routineId: string, dayId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (exerciseIds: string[]) => exercisesApi.reorder(routineId, exerciseIds),
-    onSuccess: (exercises: Exercise[]) => {
-      // Apply the server order immediately, then refresh in the background.
-      queryClient.setQueryData<RoutineWithExercises>(routineKeys.detail(routineId), (current) =>
-        current ? { ...current, exercises } : current,
-      );
-      refreshRoutine(queryClient, routineId);
-    },
+    mutationFn: (exerciseIds: string[]) => exercisesApi.reorder(dayId, exerciseIds),
+    onSuccess: () => refreshRoutine(queryClient, routineId),
   });
 }

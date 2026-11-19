@@ -20,7 +20,7 @@ Las entradas van en orden cronológico; la más reciente, al final.
 |------|--------|
 | Paso previo: paquete `shared/` (npm workspaces) | ✅ Completado |
 | Fase 2 v2: migración de la base de datos y backend | ✅ Completada |
-| Fase 3 v2: constructor de tablas y series (frontend) | ⏳ Pendiente. ⚠️ **La web no funciona hasta completarla**: sigue usando la API antigua. |
+| Fase 3 v2: constructor de tablas y series (frontend) | ✅ Completada |
 | Fase 4 v2: modo entrenamiento activo e historial | ⏳ Pendiente |
 
 ### Pendientes / deuda técnica
@@ -29,7 +29,7 @@ Revisar esta lista al empezar cada tarea.
 
 | # | Pendiente | Prioridad | Origen |
 |---|-----------|-----------|--------|
-| 1 | ~~Unificar tipos y límites duplicados~~ | ✅ **Resuelto en el server** con `@gym/shared` (2026-11-19). El `client` lo adoptará en la Fase 3 v2; hasta entonces conserva sus tipos antiguos del modelo v1. | Fase 3 |
+| 1 | ~~Unificar tipos y límites duplicados~~ | ✅ **Resuelto** (2026-11-19). `client` y `server` usan `@gym/shared`; ya no queda ningún archivo duplicado. | Fase 3 |
 | 2 | **Rate limiting** en la API. | Alta antes de exponer la API fuera de local | Fase 2 |
 | 3 | **Tests automatizados** en el repo. Hasta ahora las pruebas han sido scripts temporales. | Media | Fase 2 |
 | 4 | Avisos de `picomatch` (GHSA-fc5q-39xc-vjpf) en dependencias de desarrollo. El 2026-11-19 `npm audit` ya no los marca: **0 vulnerabilidades**, aunque seguimos en `picomatch@4.0.7`. No hubo cambio por nuestra parte; lo más probable es que se revisara el aviso. Vigilar en cada auditoría. | Baja | Fase 1 |
@@ -615,3 +615,89 @@ El usuario añadió la sección 7 a la spec: jerarquía Rutina → Tabla → Eje
 - La **web (client) no funciona** hasta completar la Fase 3 v2, porque llama a los endpoints del modelo antiguo, que ya no existen. Compila, pero falla en tiempo de ejecución.
 - La API sí se puede probar (ver `INSTRUCCIONESDEEJECUCION.md`, sección 4b).
 - Cuando arranque, la API aplicará la migración v2 a `server/database/gym.sqlite`, que quedará vacía.
+
+---
+
+## 2026-11-19 · Actualización §7: Fase 3 v2 (constructor de tablas y series)
+
+- Antes de empezar se subió el backend v2 a GitHub (`a3a2078`).
+
+### Cambios en el client
+
+- **Usa `@gym/shared`.** Se borraron `src/types/` (toda la carpeta), `utils/limits.ts` y todo el código del modelo v1: el formulario con borradores de ejercicios, `ExercisesSection`, `ExerciseItem`, etc.
+  - Se añade `zod` como dependencia explícita (misma versión, una sola copia).
+  - **Diferencia con la estructura de la spec §3:** `client/src/types/` ya no existe, porque los tipos viven ahora en `shared/src/types/`.
+- **Validación con los mismos esquemas que la API** (`utils/validation.ts` → `validateWith`):
+  - Cada formulario construye un candidato y lo valida con el esquema compartido (`routineInputSchema`, `workoutDayInputSchema`, `dayExerciseInputSchema`).
+  - Los errores de Zod se traducen al español y se asignan por ruta de campo, p. ej. `sets.2.targetRepMax` → "Debe ser ≥ reps mín.".
+  - Se usa `reportInput` para distinguir "campo obligatorio" de "debe ser un número" o "debe ser un número entero".
+- **Servicios:** `routines.api.ts` (árbol completo), `days.api.ts` y `exercises.api.ts` con los endpoints nuevos.
+- **Hooks de React Query:** cada mutación de tablas o ejercicios llama a `refreshRoutine()`, que invalida el árbol de la rutina y el listado.
+  - Al borrar una rutina, además, se quita del listado en caché al instante.
+- **`Modal`** admite `size="lg"` para el editor por series.
+
+### Vistas
+
+| Vista | Qué incluye |
+|-------|-------------|
+| Listado | Las tarjetas muestran el **nº de tablas**. |
+| Crear / editar rutina | Un único `RoutineForm` (nombre y descripción). Al crear, se va al detalle para añadir las tablas. |
+| Detalle de rutina | **Pestañas por tabla** (`DaysSection` + `DayTabs` + `DayPanel`), descritas abajo. |
+| Editor de ejercicio (modal grande) | Nombre, **una fila por serie** y notas técnicas, descrito abajo. |
+
+**Detalle de rutina:**
+- La pestaña activa va en la URL (`?day=<id>`), así que sobrevive a recargar y se puede enlazar.
+- Las pestañas siguen el patrón WAI-ARIA y se navegan con ←/→/Inicio/Fin.
+- "+ Tabla" crea una tabla y la selecciona. Si la rutina no tiene tablas, se muestra un estado vacío con "Crear primera tabla".
+- En cada tabla:
+  - Renombrarla y moverla a izquierda o derecha.
+  - Eliminarla, con un aviso explícito de que **borra su historial**.
+  - Ejercicios con su tabla de series (badge de color por tipo, peso, reps mín-máx y RIR), subir/bajar, editar y eliminar. Al eliminar un ejercicio se avisa de que el historial se conserva.
+
+**Editor de ejercicio:**
+- Cada fila de serie tiene:
+  - Un **selector de tipo** tintado con su color: Aproximación (azul), Normal (gris), Top set (rosa), Back-off (ámbar), Rest-pause (violeta), Drop set (verde).
+  - **Campos compactos** para Peso kg, Reps mín, Reps máx y RIR. El peso acepta coma decimal.
+  - Botones de **duplicar** (inserta una copia justo debajo) y **quitar** (desactivado si es la única serie).
+- **"+ Añadir serie" copia la configuración de la última serie.**
+- Un ejercicio nuevo empieza con 3 series normales de 8-12.
+- Máximo 20 series.
+- Los errores se muestran en la propia fila.
+- **Móvil:** cada serie ocupa 2 líneas (tipo y acciones / 4 campos), sin scroll horizontal (comprobado: 358 px de contenido en 358 px disponibles).
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` (shared + server + client) | ✅ |
+| `npm audit` | ✅ 0 vulnerabilidades |
+| Archivo más grande del client | 104 líneas |
+| Capturas (Edge headless) del detalle en escritorio y móvil, del editor en escritorio y del editor en móvil emulado a 390 px | ✅ revisadas |
+| Flujos de interfaz automatizados con Edge vía CDP (base de datos temporal) | ✅ 14/14 |
+
+**Flujos probados:**
+- Crear rutina → estado sin tablas.
+- Crear la primera tabla (seleccionada y en la URL) y una segunda con "+ Tabla".
+- Teclado ← en las pestañas.
+- Editor con 3 series por defecto.
+- Error `min > max` en la fila 3.
+- Duplicar (copia tipo y peso `85,5`), quitar y añadir (copia la última).
+- Guardar con badges correctos.
+- Editar con los valores precargados y quitar una serie.
+- Renombrar, mover y eliminar la tabla.
+- Eliminar la rutina y volver al listado.
+- URL de una rutina borrada → mensaje claro.
+
+**Incidencias del test (no eran fallos de la app):**
+1. "Quitar serie" + "Guardar" en la misma tarea JS: React aún no había aplicado el cambio. Se añadió una espera en el test; un usuario real no puede hacer dos clics en la misma tarea.
+2. Datos sobrantes de una ejecución interrumpida hacían fallar la comprobación "la rutina ya no está".
+   - Al investigarlo se añadió igualmente una mejora real: quitar la rutina del listado en caché al instante tras borrarla.
+
+### ⚠️ Incidencia: `gym.sqlite` real migrada a v2
+
+- **Qué se encontró:** al final de esta fase, la base de datos real estaba ya en `user_version = 2`, **vacía** (0 filas en las 6 tablas, sin datos de prueba).
+- **Cuándo:** el cambio está en `gym.sqlite-wal`, escrito el 2026-11-19 a las 16:09:08.
+- **Origen sin confirmar:** no coincide con ningún servidor de prueba de Claude (16:04, 16:07 y 16:15, todos con `DATABASE_PATH` temporal y ya cerrados). Puede que el usuario arrancara la app en ese intervalo, pero no puede descartarse del todo un proceso de las pruebas.
+- **Fallo de verificación de Claude:** las comprobaciones de "base de datos real intacta" comparaban solo el hash de `gym.sqlite`. Con `journal_mode = WAL`, SQLite escribe primero en `gym.sqlite-wal`, así que esa comprobación no detectaba cambios.
+  - **A partir de ahora:** verificar `PRAGMA user_version` y los tres archivos (`.sqlite`, `-wal` y `-shm`).
+- **Impacto:** ninguno real. Es el mismo estado que habría quedado al arrancar la API por primera vez tras la decisión de "empezar de cero".

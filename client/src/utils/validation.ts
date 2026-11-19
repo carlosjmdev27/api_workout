@@ -1,16 +1,9 @@
-import type { FormErrors } from '../types/form';
+import type { z } from 'zod';
 
-interface TextRule {
-  max: number;
-  required?: boolean;
-}
+/** Error message per field path, e.g. "name" or "sets.0.targetRepMax". */
+export type FieldErrors = Record<string, string>;
 
-interface NumberRule {
-  min: number;
-  max: number;
-  integer?: boolean;
-  required?: boolean;
-}
+export type ValidationResult<T> = { ok: true; data: T } | { ok: false; errors: FieldErrors };
 
 /** Parses user input ("60,5" or "60.5"). Returns null if empty, NaN if invalid. */
 export function parseDecimal(raw: string): number | null {
@@ -19,34 +12,58 @@ export function parseDecimal(raw: string): number | null {
   return Number(trimmed);
 }
 
-export function checkText(raw: string, rule: TextRule): string | undefined {
-  const value = raw.trim();
-  if (value === '') return rule.required ? 'Campo obligatorio' : undefined;
-  if (value.length > rule.max) return `Máximo ${rule.max} caracteres`;
-  return undefined;
+const CUSTOM_MESSAGES: Record<string, string> = {
+  targetRepMax: 'Debe ser ≥ reps mín.',
+};
+
+function isEmpty(input: unknown): boolean {
+  return input === null || input === undefined || input === '';
 }
 
-export function checkNumber(raw: string, rule: NumberRule): string | undefined {
-  const value = parseDecimal(raw);
-  if (value === null) return rule.required ? 'Campo obligatorio' : undefined;
-  if (!Number.isFinite(value)) return 'Debe ser un número';
-  if (rule.integer && !Number.isInteger(value)) return 'Debe ser un número entero';
-  if (value < rule.min || value > rule.max) return `Debe estar entre ${rule.min} y ${rule.max}`;
-  return undefined;
+function typeMessage(input: unknown): string {
+  if (isEmpty(input)) return 'Campo obligatorio';
+  if (typeof input === 'number' && Number.isFinite(input) && !Number.isInteger(input)) {
+    return 'Debe ser un número entero';
+  }
+  return 'Debe ser un número';
 }
 
-/** Removes fields without error so `{}` means "valid". */
-export function compactErrors<T>(errors: FormErrors<T>): FormErrors<T> {
-  const entries = Object.entries(errors).filter(([, message]) => message !== undefined);
-  return Object.fromEntries(entries) as FormErrors<T>;
+/** Spanish, user-facing message for a Zod issue coming from the shared schemas. */
+function messageFor(issue: z.core.$ZodIssue): string {
+  switch (issue.code) {
+    case 'invalid_type':
+      return typeMessage(issue.input);
+    case 'too_small':
+      if (issue.origin === 'string') return 'Campo obligatorio';
+      if (issue.origin === 'array') return `Añade al menos ${String(issue.minimum)}`;
+      return `Mínimo ${String(issue.minimum)}`;
+    case 'too_big':
+      if (issue.origin === 'string') return `Máximo ${String(issue.maximum)} caracteres`;
+      return `Máximo ${String(issue.maximum)}`;
+    case 'invalid_value':
+      return 'Opción no válida';
+    case 'custom':
+      return CUSTOM_MESSAGES[String(issue.path.at(-1))] ?? 'Valor no válido';
+    default:
+      return 'Valor no válido';
+  }
 }
 
-export function hasErrors<T>(errors: FormErrors<T>): boolean {
-  return Object.keys(errors).length > 0;
-}
+/**
+ * Validates a form candidate with the SAME Zod schema the API uses
+ * (from @gym/shared), returning the parsed data or per-field messages.
+ */
+export function validateWith<S extends z.ZodType>(
+  schema: S,
+  candidate: unknown,
+): ValidationResult<z.output<S>> {
+  const result = schema.safeParse(candidate, { reportInput: true });
+  if (result.success) return { ok: true, data: result.data };
 
-/** Empty text becomes null, so optional fields can be cleared. */
-export function toOptionalText(raw: string): string | null {
-  const value = raw.trim();
-  return value === '' ? null : value;
+  const errors: FieldErrors = {};
+  result.error.issues.forEach((issue) => {
+    const key = issue.path.map(String).join('.');
+    errors[key] ??= messageFor(issue);
+  });
+  return { ok: false, errors };
 }

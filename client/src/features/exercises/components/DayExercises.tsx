@@ -1,38 +1,33 @@
 import { useState, type JSX } from 'react';
 import { ListChecks, Plus } from 'lucide-react';
+import { LIMITS, type DayExercise, type DayExerciseInput } from '@gym/shared';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { EmptyState } from '../../../components/StatusViews';
-import type { Exercise, ExerciseInput } from '../../../types/exercise';
 import { getErrorMessage } from '../../../utils/errors';
-import { LIMITS } from '../../../utils/limits';
-import {
-  useCreateExercise,
-  useDeleteExercise,
-  useReorderExercises,
-  useUpdateExercise,
-} from '../hooks';
-import { ExerciseFormDialog } from './ExerciseFormDialog';
-import { ExerciseItem } from './ExerciseItem';
+import { useCreateExercise, useDeleteExercise, useReorderExercises, useUpdateExercise } from '../hooks';
+import { ExerciseCard } from './ExerciseCard';
+import { ExerciseEditorDialog } from './ExerciseEditorDialog';
 
-type EditorState = { mode: 'create' } | { mode: 'edit'; exercise: Exercise } | null;
+type EditorState = { mode: 'create' } | { mode: 'edit'; exercise: DayExercise } | null;
 
-interface ExercisesSectionProps {
+interface DayExercisesProps {
   routineId: string;
-  exercises: Exercise[];
+  dayId: string;
+  exercises: DayExercise[];
 }
 
-/** Exercise list of a routine with add / edit / delete / reorder. */
-export function ExercisesSection({ routineId, exercises }: ExercisesSectionProps): JSX.Element {
+/** Exercises of one workout day with add / edit / delete / reorder. */
+export function DayExercises({ routineId, dayId, exercises }: DayExercisesProps): JSX.Element {
   const [editor, setEditor] = useState<EditorState>(null);
-  const [toDelete, setToDelete] = useState<Exercise | null>(null);
-  const createMutation = useCreateExercise(routineId);
+  const [toDelete, setToDelete] = useState<DayExercise | null>(null);
+  const createMutation = useCreateExercise(routineId, dayId);
   const updateMutation = useUpdateExercise(routineId);
   const deleteMutation = useDeleteExercise(routineId);
-  const reorderMutation = useReorderExercises(routineId);
+  const reorderMutation = useReorderExercises(routineId, dayId);
   const isEdit = editor?.mode === 'edit';
-  const limitReached = exercises.length >= LIMITS.EXERCISES_PER_ROUTINE_MAX;
+  const limitReached = exercises.length >= LIMITS.EXERCISES_PER_DAY_MAX;
 
   const openEditor = (next: EditorState): void => {
     createMutation.reset();
@@ -40,13 +35,10 @@ export function ExercisesSection({ routineId, exercises }: ExercisesSectionProps
     setEditor(next);
   };
 
-  const handleSubmit = (input: ExerciseInput): void => {
+  const handleSubmit = (input: DayExerciseInput): void => {
     const options = { onSuccess: () => setEditor(null) };
-    if (editor?.mode === 'edit') {
-      updateMutation.mutate({ exerciseId: editor.exercise.id, input }, options);
-    } else {
-      createMutation.mutate(input, options);
-    }
+    if (editor?.mode === 'edit') updateMutation.mutate({ exerciseId: editor.exercise.id, input }, options);
+    else createMutation.mutate(input, options);
   };
 
   const handleMove = (index: number, offset: -1 | 1): void => {
@@ -56,45 +48,21 @@ export function ExercisesSection({ routineId, exercises }: ExercisesSectionProps
     reorderMutation.mutate(ids);
   };
 
-  const handleDelete = (): void => {
-    if (!toDelete) return;
-    deleteMutation.mutate(toDelete.id, { onSuccess: () => setToDelete(null) });
-  };
-
   const closeDelete = (): void => {
     deleteMutation.reset();
     setToDelete(null);
   };
 
   return (
-    <section aria-labelledby="exercises-title" className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 id="exercises-title" className="text-lg font-semibold text-slate-900">
-          Ejercicios
-        </h2>
-        <Button
-          size="sm"
-          icon={Plus}
-          disabled={limitReached}
-          title={limitReached ? `Máximo ${LIMITS.EXERCISES_PER_ROUTINE_MAX} ejercicios` : undefined}
-          onClick={() => openEditor({ mode: 'create' })}
-        >
-          Añadir
-        </Button>
-      </div>
-
+    <div className="space-y-4">
       {reorderMutation.isError && <Alert message={getErrorMessage(reorderMutation.error)} />}
 
       {exercises.length === 0 ? (
-        <EmptyState
-          icon={ListChecks}
-          title="Sin ejercicios todavía"
-          description="Añade el primer ejercicio de esta rutina."
-        />
+        <EmptyState icon={ListChecks} title="Tabla sin ejercicios" description="Añade el primer ejercicio y configura sus series." />
       ) : (
         <ol className="space-y-3">
           {exercises.map((exercise, index) => (
-            <ExerciseItem
+            <ExerciseCard
               key={exercise.id}
               exercise={exercise}
               isFirst={index === 0}
@@ -109,7 +77,11 @@ export function ExercisesSection({ routineId, exercises }: ExercisesSectionProps
         </ol>
       )}
 
-      <ExerciseFormDialog
+      <Button icon={Plus} disabled={limitReached} onClick={() => openEditor({ mode: 'create' })}>
+        Añadir ejercicio
+      </Button>
+
+      <ExerciseEditorDialog
         open={editor !== null}
         exercise={isEdit ? editor.exercise : null}
         pending={isEdit ? updateMutation.isPending : createMutation.isPending}
@@ -120,13 +92,13 @@ export function ExercisesSection({ routineId, exercises }: ExercisesSectionProps
       <ConfirmDialog
         open={toDelete !== null}
         title="Eliminar ejercicio"
-        message={`¿Seguro que quieres eliminar «${toDelete?.name ?? ''}»? Esta acción no se puede deshacer.`}
+        message={`¿Eliminar «${toDelete?.name ?? ''}» y sus series? El historial de entrenamientos ya registrado se conserva.`}
         confirmLabel="Eliminar"
         loading={deleteMutation.isPending}
         error={deleteMutation.isError ? getErrorMessage(deleteMutation.error) : null}
-        onConfirm={handleDelete}
+        onConfirm={() => toDelete && deleteMutation.mutate(toDelete.id, { onSuccess: () => setToDelete(null) })}
         onCancel={closeDelete}
       />
-    </section>
+    </div>
   );
 }

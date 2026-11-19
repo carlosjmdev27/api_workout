@@ -1,12 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import type { RoutineInput, RoutineSummary } from '@gym/shared';
 import { routinesApi } from '../../services/routines.api';
-import type { CreateRoutineInput, UpdateRoutineInput } from '../../types/routine';
 
-/** Cache keys: one list + one entry per routine detail. */
+/** Cache keys: one list + one entry per routine detail (full tree). */
 export const routineKeys = {
   list: ['routines', 'list'] as const,
   detail: (id: string) => ['routines', 'detail', id] as const,
 };
+
+/** Anything inside a routine changed: refresh its tree and the list counters. */
+export function refreshRoutine(queryClient: QueryClient, routineId: string): void {
+  void queryClient.invalidateQueries({ queryKey: routineKeys.detail(routineId) });
+  void queryClient.invalidateQueries({ queryKey: routineKeys.list });
+}
 
 export function useRoutinesQuery() {
   return useQuery({ queryKey: routineKeys.list, queryFn: routinesApi.list });
@@ -23,7 +29,7 @@ export function useRoutineQuery(id: string) {
 export function useCreateRoutine() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreateRoutineInput) => routinesApi.create(input),
+    mutationFn: (input: RoutineInput) => routinesApi.create(input),
     onSuccess: (routine) => {
       queryClient.setQueryData(routineKeys.detail(routine.id), routine);
       void queryClient.invalidateQueries({ queryKey: routineKeys.list });
@@ -34,7 +40,7 @@ export function useCreateRoutine() {
 export function useUpdateRoutine(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: UpdateRoutineInput) => routinesApi.update(id, input),
+    mutationFn: (input: RoutineInput) => routinesApi.update(id, input),
     onSuccess: (routine) => {
       queryClient.setQueryData(routineKeys.detail(id), routine);
       void queryClient.invalidateQueries({ queryKey: routineKeys.list });
@@ -48,6 +54,10 @@ export function useDeleteRoutine() {
     mutationFn: (id: string) => routinesApi.remove(id),
     onSuccess: (_result, id) => {
       queryClient.removeQueries({ queryKey: routineKeys.detail(id), exact: true });
+      // Drop it from the cached list right away so it never flashes after navigating back.
+      queryClient.setQueryData<RoutineSummary[]>(routineKeys.list, (current) =>
+        current?.filter((routine) => routine.id !== id),
+      );
       void queryClient.invalidateQueries({ queryKey: routineKeys.list });
     },
   });

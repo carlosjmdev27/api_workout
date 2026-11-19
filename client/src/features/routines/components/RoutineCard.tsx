@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { CalendarClock, ChevronRight, ListChecks } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { RoutineSummary } from '../../../types/routine';
+import type { RoutineSummary } from '@gym/shared';
 import { formatDate, pluralize } from '../../../utils/format';
 
 export function RoutineCard({ routine }: { routine: RoutineSummary }): JSX.Element {
@@ -25,7 +25,7 @@ export function RoutineCard({ routine }: { routine: RoutineSummary }): JSX.Eleme
       <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1">
           <ListChecks className="h-3.5 w-3.5" aria-hidden="true" />
-          {pluralize(routine.exerciseCount, 'ejercicio', 'ejercicios')}
+          {pluralize(routine.dayCount, 'tabla', 'tablas')}
         </span>
         <span className="inline-flex items-center gap-1">
           <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
