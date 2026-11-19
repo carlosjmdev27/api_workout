@@ -32,7 +32,17 @@ Revisar esta lista al empezar cada tarea.
 | 1 | ~~Unificar tipos y límites duplicados~~ | ✅ **Resuelto** (2026-11-19). `client` y `server` usan `@gym/shared`; ya no queda ningún archivo duplicado. | Fase 3 |
 | 2 | **Rate limiting** en la API. | Alta antes de exponer la API fuera de local | Fase 2 |
 | 3 | **Tests automatizados** en el repo. Hasta ahora las pruebas han sido scripts temporales. | Media | Fase 2 |
+| 5 | **Privacidad de los `.md` de la raíz** (detalle abajo). Decisión aplazada por el usuario el 2026-11-19. | Media: decidir antes de añadir información sensible a la documentación | Fase 4 v2 |
 | 4 | Avisos de `picomatch` (GHSA-fc5q-39xc-vjpf) en dependencias de desarrollo. El 2026-11-19 `npm audit` ya no los marca: **0 vulnerabilidades**, aunque seguimos en `picomatch@4.0.7`. No hubo cambio por nuestra parte; lo más probable es que se revisara el aviso. Vigilar en cada auditoría. | Baja | Fase 1 |
+
+**Detalle del pendiente #5: privacidad de `PROJECT_SPEC.md`, `PROJECT_DOC.md` e `INSTRUCCIONESDEEJECUCION.md`**
+
+- **Objetivo del usuario:** subir también `INSTRUCCIONESDEEJECUCION.md` a GitHub, pero que los `.md` de la raíz solo los vean el usuario y Claude.
+- **Limitación:** GitHub no permite restringir archivos sueltos. En un repo público todo es visible. `PROJECT_SPEC.md` y `PROJECT_DOC.md` **ya son públicos, incluido su historial**.
+- **Opciones:**
+  1. **Hacer privado el repo** (recomendada). Se hace en Settings → General → Danger Zone → Change visibility. Después se saca `INSTRUCCIONESDEEJECUCION.md` del `.gitignore` y se sube. Contra: el código también deja de ser público.
+  2. **Mover los `.md` a un segundo repo privado** y sacarlos del público. Su historial anterior sigue siendo visible, salvo que se reescriba (operación destructiva + force push, requiere confirmación explícita).
+- **Mientras tanto:** `INSTRUCCIONESDEEJECUCION.md` sigue **solo en local**. Claude no necesita GitHub para leer ninguno de estos archivos, porque trabaja con los del disco.
 
 **Arrancar en local** (desde la raíz, monorepo con npm workspaces):
 
