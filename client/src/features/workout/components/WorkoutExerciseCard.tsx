@@ -1,4 +1,6 @@
 import type { JSX } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '../../../components/Button';
 import type { WorkoutGroup } from '../workout-model';
 import type { WorkoutSessionState } from '../useWorkoutSession';
 import { WorkoutSetRow } from './WorkoutSetRow';
@@ -9,8 +11,9 @@ interface WorkoutExerciseCardProps {
 }
 
 export function WorkoutExerciseCard({ group, session }: WorkoutExerciseCardProps): JSX.Element {
-  const { exercise, rows } = group;
+  const { exercise, rows, canAddExtra } = group;
   const done = rows.filter((row) => session.entryOf(row.key).completed).length;
+  const lastRow = rows.at(-1);
 
   return (
     <li className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -27,18 +30,26 @@ export function WorkoutExerciseCard({ group, session }: WorkoutExerciseCardProps
         </span>
       </div>
       <ol className="space-y-2">
-        {rows.map((row) => (
-          <WorkoutSetRow
-            key={row.key}
-            row={row}
-            exerciseName={exercise.name}
-            entry={session.entryOf(row.key)}
-            errors={session.rowErrors[row.key]}
-            onValue={(field, value) => session.setValue(row.key, field, value)}
-            onToggle={() => session.toggle(row.key)}
-          />
-        ))}
+        {rows.map((row) => {
+          const entry = session.entryOf(row.key);
+          return (
+            <WorkoutSetRow
+              key={row.key}
+              row={row}
+              exerciseName={exercise.name}
+              entry={entry}
+              errors={session.rowErrors[row.key]}
+              removable={row.isExtra && row === lastRow && !entry.completed}
+              onValue={(field, value) => session.setValue(row.key, field, value)}
+              onToggle={() => session.toggle(row.key)}
+              onRemove={() => session.removeExtra(exercise.id)}
+            />
+          );
+        })}
       </ol>
+      <Button variant="ghost" size="sm" icon={Plus} className="mt-2" disabled={!canAddExtra} onClick={() => session.addExtra(exercise.id)}>
+        Serie extra
+      </Button>
     </li>
   );
 }

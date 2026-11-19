@@ -1,38 +1,28 @@
 import { useState, type JSX } from 'react';
 import { History, Play } from 'lucide-react';
 import type { WorkoutDayDetail, WorkoutSession } from '@gym/shared';
-import { useLocation, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { LinkButton } from '../../../components/LinkButton';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '../../../components/StatusViews';
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle';
 import { getErrorMessage } from '../../../utils/errors';
+import { activeWorkoutPath } from '../../workout/active-workout';
 import { useDayHistoryQuery, useDayQuery, useDeleteSession } from '../../workout/hooks';
 import { ExerciseProgress } from '../components/ExerciseProgress';
 import { SessionCard } from '../components/SessionCard';
 
-function wasJustSaved(state: unknown): boolean {
-  return typeof state === 'object' && state !== null && 'saved' in state && state.saved === true;
-}
-
 function HistoryContent({ day, sessions }: { day: WorkoutDayDetail; sessions: WorkoutSession[] }): JSX.Element {
-  const location = useLocation();
   const deleteMutation = useDeleteSession(day.id);
   const [toDelete, setToDelete] = useState<WorkoutSession | null>(null);
   const startAction = day.exercises.length > 0 && (
-    <LinkButton to={`/days/${day.id}/workout`} icon={Play} size="sm">Iniciar tabla</LinkButton>
+    <LinkButton to={activeWorkoutPath(day.id)} icon={Play} size="sm">Iniciar tabla</LinkButton>
   );
 
   return (
     <div className="space-y-6">
       <PageHeader title={`Historial · ${day.name}`} description={day.routineName} backTo={`/routines/${day.routineId}?day=${day.id}`} backLabel="Volver a la rutina" actions={startAction} />
-
-      {wasJustSaved(location.state) && (
-        <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-          Entrenamiento guardado. Aquí tienes tu progresión.
-        </div>
-      )}
 
       {sessions.length === 0 ? (
         <EmptyState icon={History} title="Aún no hay entrenamientos registrados" description="Inicia esta tabla y guarda la sesión para empezar a ver tu progresión." action={startAction} />

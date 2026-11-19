@@ -1,8 +1,9 @@
 import type { SetType } from '@gym/shared';
 
 /**
- * A session ready to be persisted: the service has already validated it
- * and resolved each set's exercise name/order snapshot from the template.
+ * A session ready to be persisted: the service has already validated it,
+ * computed its duration and resolved each set's exercise name/order snapshot.
+ * Only completed sets are recorded.
  */
 export interface NewLoggedSetRecord {
   dayExerciseId: string;
@@ -11,14 +12,14 @@ export interface NewLoggedSetRecord {
   setNumber: number;
   setType: SetType;
   actualWeight: number | null;
-  actualReps: number | null;
-  completed: boolean;
+  actualReps: number;
 }
 
 export interface NewSessionRecord {
   workoutDayId: string;
+  startedAt: string;
   completedAt: string;
-  durationMinutes: number | null;
+  durationSeconds: number;
   notes: string | null;
   sets: NewLoggedSetRecord[];
 }

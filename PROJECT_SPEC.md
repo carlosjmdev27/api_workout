@@ -212,3 +212,50 @@ Para comparar el rendimiento sin sobrescribir la plantilla base:
   2. **Columna "Anterior" (Ghost Data)**: Consultar automáticamente la última `WorkoutSessionLog` de esa misma tabla y mostrar junto a cada serie lo que se levantó en la sesión previa (ej. *"Anterior: 100kg x 7 [Top Set]"*).
   3. **Autocompletado y Guardado**: Permitir marcar cada serie con un check al completarla, ajustar peso/reps reales y guardar la sesión completa en el historial.
   4. **Vista de Historial por Tabla / Ejercicio**: Mostrar una comparativa cronológica (tabla o gráfico simple) de sesiones pasadas de esa misma tabla para visualizar la sobrecarga progresiva (peso movido, repeticiones totales y e1RM estimado).
+
+  8. Actualizacion v3
+
+  ### 1. Corrección de Lógica: Planificación vs. Ejecución Real
+Actualmente la interfaz solo muestra los objetivos de la plantilla (`target_rep_min`, `target_rep_max`, `target_weight`). Se debe separar estrictamente la **Vista de Edición de Tabla** (plantilla) de la **Vista de Entrenamiento Activo** (ejecución):
+
+- **En la Plantilla (`PlannedSet`)**: Se mantienen `target_weight`, `target_rep_min` y `target_rep_max` como guía/objetivo.
+- **En el Entrenamiento Activo (`LoggedSet`)**: Cada fila de serie debe tener sus propios inputs editables para registrar lo que realmente ha ocurrido en el gimnasio:
+  - `actual_weight` (float): Peso real levantado (pre-rellenado por defecto con `target_weight` o el último peso usado para agilizar).
+  - `actual_reps` (int): **Repeticiones reales completadas** (campo vacío o placeholder con el rango objetivo ej. `"6-8"`, obligatorio antes de marcar la serie como completada).
+  - `completed` (boolean): Checkbox de serie terminada.
+
+### 2. Ciclo de Vida de la Sesión y Cronómetro
+El entrenamiento tendrá un estado activo controlado por el usuario:
+
+1. **Iniciar Entrenamiento (`Iniciar Tabla`)**:
+   - Entra en la ruta/vista `/workout/active/:dayId`.
+   - Guarda el timestamp exacto de inicio (`started_at = Date.now()`) en el estado y en `localStorage` (para que si el usuario recarga la página o bloquea el móvil, el cronómetro no se reinicie ni pierda los datos apuntados).
+   - Muestra una **barra superior fija (sticky header)** con:
+     - Nombre de la tabla activa.
+     - **Cronómetro en tiempo real (`HH:MM:SS`)**: Calculado mediante diferencia de timestamps (`Date.now() - started_at`) cada segundo, evitando desfases cuando la pestaña está en segundo plano.
+     - Botón para **Cancelar/Descartar** sesión (con confirmación).
+     - Botón destacado para **Terminar Entrenamiento**.
+
+2. **Durante el Entrenamiento**:
+   - El usuario visualiza el objetivo de cada serie (ej. `Top Set · Obj: 100kg × 6-8 reps`) y la referencia de la sesión anterior si existe.
+   - Rellena **Peso Real** y **Reps Reales** en cada serie y marca el check de completado.
+   - *(Opcional pero recomendado)*: Permitir añadir una serie extra "al vuelo" durante el entrenamiento si el usuario decide hacer una serie más ese día, sin modificar necesariamente la plantilla base.
+
+3. **Terminar Entrenamiento**:
+   - Al pulsar **Terminar Entrenamiento**, se detiene el reloj y se calcula `duration_seconds = Math.floor((Date.now() - started_at) / 1000)`.
+   - Se valida que haya al menos una serie marcada como completada (o se pregunta si se desean guardar solo las series completadas).
+   - Se envía el payload completo a `POST /api/sessions` con:
+     - `workout_day_id`
+     - `started_at` y `completed_at`
+     - `duration_seconds`
+     - `notes` (campo opcional para sensaciones generales del entreno)
+     - `sets`: Array con las series realizadas (`exercise_id`, `set_number`, `set_type`, `actual_weight`, `actual_reps`).
+   - Se limpia el borrador de `localStorage` y redirige a un **Resumen Post-Entrenamiento** (mostrando duración total, volumen total levantado en kg y comparativa de mejora respecto a la última sesión).
+
+### 3. Tareas Técnicas para Claude (Backend + Frontend)
+- **Backend**:
+  - Verificar que el modelo/tabla `WorkoutSessionLog` incluya `started_at` (DATETIME), `completed_at` (DATETIME) y `duration_seconds` (INTEGER).
+  - Asegurar que `GET /api/days/:dayId/history` devuelva también la duración de cada sesión pasada formateada o en segundos.
+- **Frontend**:
+  - Crear componente `ActiveWorkoutTimer` basado en `started_at` (nunca con `setInterval` sumando `+1` a ciegas, para evitar congelamientos en móvil).
+  - Implementar persistencia temporal en `localStorage` (`active_workout_draft`) para tolerancia a fallos/recargas accidentales en el gimnasio.

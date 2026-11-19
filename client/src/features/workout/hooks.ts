@@ -20,6 +20,18 @@ export function useDayHistoryQuery(dayId: string) {
   });
 }
 
+export const sessionKeys = {
+  detail: (sessionId: string) => ['sessions', sessionId] as const,
+};
+
+export function useSessionQuery(sessionId: string) {
+  return useQuery({
+    queryKey: sessionKeys.detail(sessionId),
+    queryFn: () => sessionsApi.get(sessionId),
+    enabled: sessionId !== '',
+  });
+}
+
 export function useCreateSession(dayId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -32,6 +44,9 @@ export function useDeleteSession(dayId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (sessionId: string) => sessionsApi.remove(sessionId),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: dayKeys.history(dayId) }),
+    onSuccess: (_result, sessionId) => {
+      queryClient.removeQueries({ queryKey: sessionKeys.detail(sessionId) });
+      void queryClient.invalidateQueries({ queryKey: dayKeys.history(dayId) });
+    },
   });
 }

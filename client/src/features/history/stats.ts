@@ -41,6 +41,26 @@ export function exerciseOptions(sessions: WorkoutSession[]): ExerciseOption[] {
     .map(([key, { name }]) => ({ key, name }));
 }
 
+export interface BestSet {
+  weight: number | null;
+  reps: number;
+  e1rm: number | null;
+}
+
+/** Best completed set: highest e1RM (ties -> heavier). null if none qualifies. */
+export function bestSet(sets: LoggedSet[]): BestSet | null {
+  const scored = sets
+    .filter(isDone)
+    .map((set) => ({ weight: set.actualWeight, reps: set.actualReps ?? 0, e1rm: estimateOneRepMax(set.actualWeight, set.actualReps) }));
+  if (scored.length === 0) return null;
+  return scored.reduce((top, current) =>
+    (current.e1rm ?? -1) > (top.e1rm ?? -1) ||
+    ((current.e1rm ?? -1) === (top.e1rm ?? -1) && (current.weight ?? 0) > (top.weight ?? 0))
+      ? current
+      : top,
+  );
+}
+
 export interface ProgressPoint {
   sessionId: string;
   date: string;
@@ -55,20 +75,14 @@ export interface ProgressPoint {
 export function exerciseProgress(sessions: WorkoutSession[], key: string): ProgressPoint[] {
   return [...sessions].reverse().flatMap((session) => {
     const sets = session.sets.filter((set) => exerciseKeyOf(set) === key && isDone(set));
-    if (sets.length === 0) return [];
+    const best = bestSet(sets);
+    if (!best) return [];
 
-    const scored = sets.map((set) => ({ set, e1rm: estimateOneRepMax(set.actualWeight, set.actualReps) }));
-    const best = scored.reduce((top, current) =>
-      (current.e1rm ?? -1) > (top.e1rm ?? -1) ||
-      ((current.e1rm ?? -1) === (top.e1rm ?? -1) && (current.set.actualWeight ?? 0) > (top.set.actualWeight ?? 0))
-        ? current
-        : top,
-    );
     return [{
       sessionId: session.id,
       date: session.completedAt,
-      bestWeight: best.set.actualWeight,
-      bestReps: best.set.actualReps ?? 0,
+      bestWeight: best.weight,
+      bestReps: best.reps,
       e1rm: best.e1rm,
       totalReps: sets.reduce((sum, set) => sum + (set.actualReps ?? 0), 0),
       volume: sets.reduce((sum, set) => sum + (set.actualWeight ?? 0) * (set.actualReps ?? 0), 0),

@@ -93,6 +93,16 @@ const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX idx_logged_sets_session ON logged_sets (session_id);
   `,
+  // v3 — session lifecycle: exact start time and duration in seconds (computed by
+  // the server). Existing minutes are converted; old sessions keep started_at NULL.
+  `
+  ALTER TABLE workout_sessions ADD COLUMN started_at TEXT;
+  ALTER TABLE workout_sessions ADD COLUMN duration_seconds INTEGER
+    CHECK (duration_seconds IS NULL OR duration_seconds >= 0);
+  UPDATE workout_sessions SET duration_seconds = duration_minutes * 60
+    WHERE duration_minutes IS NOT NULL;
+  ALTER TABLE workout_sessions DROP COLUMN duration_minutes;
+  `,
 ];
 
 function getSchemaVersion(db: Database): number {

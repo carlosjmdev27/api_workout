@@ -7,6 +7,7 @@ import { LinkButton } from '../../../components/LinkButton';
 import { getErrorMessage } from '../../../utils/errors';
 import { pluralize } from '../../../utils/format';
 import { DayExercises } from '../../exercises/components/DayExercises';
+import { activeWorkoutPath } from '../../workout/active-workout';
 import { useDeleteDay, useRenameDay } from '../hooks';
 import { DayNameDialog } from './DayNameDialog';
 import { tabId } from '../tab-ids';
@@ -50,7 +51,7 @@ export function DayPanel({ routineId, day, panelId, isFirst, isLast, moving, onM
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {day.exercises.length > 0 && (
-              <LinkButton to={`/days/${day.id}/workout`} icon={Play} size="sm">Iniciar tabla</LinkButton>
+              <LinkButton to={activeWorkoutPath(day.id)} icon={Play} size="sm">Iniciar tabla</LinkButton>
             )}
             <LinkButton to={`/days/${day.id}/history`} icon={History} size="sm" variant="secondary">Historial</LinkButton>
           </div>

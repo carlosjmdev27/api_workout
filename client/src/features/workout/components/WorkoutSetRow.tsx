@@ -1,22 +1,21 @@
-import { useId, type JSX } from 'react';
-import { Check } from 'lucide-react';
+import { useId, useRef, type JSX, type RefObject } from 'react';
+import { Check, X } from 'lucide-react';
 import type { FieldErrors } from '../../../utils/validation';
 import { formatRepRange, formatWeight } from '../../../utils/format';
+import { IconButton } from '../../../components/IconButton';
 import { SetTypeBadge } from '../../exercises/components/SetTypeBadge';
 import { SET_TYPE_LABELS } from '../../exercises/set-type-styles';
-import type { RowEntry, WorkoutRow } from '../workout-model';
-import { toInputText } from '../workout-model';
+import type { RowEntry } from '../active-workout';
+import type { WorkoutRow } from '../workout-model';
 
 /** "Anterior: 100 kg × 7 [Top set]" — what was done last time for this set. */
 function PreviousCell({ row }: { row: WorkoutRow }): JSX.Element {
   const previous = row.previous;
   if (!previous) return <span className="text-slate-400">Anterior: —</span>;
-
   const weight = previous.actualWeight === null ? 'sin peso' : formatWeight(previous.actualWeight);
-  const reps = previous.actualReps ?? '—';
   return (
     <span className={previous.completed ? 'text-slate-600' : 'text-slate-400'}>
-      Anterior: <span className="font-medium tabular-nums">{weight} × {reps}</span>
+      Anterior: <span className="font-medium tabular-nums">{weight} × {previous.actualReps ?? '—'}</span>
       {previous.setType !== row.setType && <> [{SET_TYPE_LABELS[previous.setType]}]</>}
       {!previous.completed && ' (no completada)'}
     </span>
@@ -29,15 +28,17 @@ interface InputProps {
   placeholder: string;
   error?: string | undefined;
   decimal?: boolean;
+  inputRef?: RefObject<HTMLInputElement | null>;
   onChange: (value: string) => void;
 }
 
-function CompactInput({ label, value, placeholder, error, decimal, onChange }: InputProps): JSX.Element {
+function CompactInput({ label, value, placeholder, error, decimal, inputRef, onChange }: InputProps): JSX.Element {
   const id = useId();
   return (
     <div className="w-20">
       <label htmlFor={id} className="block text-[11px] font-medium text-slate-500">{label}</label>
       <input
+        ref={inputRef}
         id={id}
         value={value}
         placeholder={placeholder}
@@ -58,15 +59,22 @@ interface WorkoutSetRowProps {
   exerciseName: string;
   entry: RowEntry;
   errors: FieldErrors | undefined;
+  /** Only the last extra set can be removed (keeps numbering contiguous). */
+  removable: boolean;
   onValue: (field: 'weight' | 'reps', value: string) => void;
-  onToggle: () => void;
+  onToggle: () => boolean;
+  onRemove: () => void;
 }
 
-export function WorkoutSetRow({ row, exerciseName, entry, errors, onValue, onToggle }: WorkoutSetRowProps): JSX.Element {
-  const target = `${formatRepRange(row.targetRepMin, row.targetRepMax)} reps${
-    row.targetWeight === null ? '' : ` · ${formatWeight(row.targetWeight)}`
-  }`;
-  const errorText = errors?.actualWeight ?? errors?.actualReps;
+export function WorkoutSetRow({ row, exerciseName, entry, errors, removable, onValue, onToggle, onRemove }: WorkoutSetRowProps): JSX.Element {
+  const repsRef = useRef<HTMLInputElement>(null);
+  const range = formatRepRange(row.targetRepMin, row.targetRepMax);
+  const target = `${range} reps${row.targetWeight === null ? '' : ` · ${formatWeight(row.targetWeight)}`}`;
+  const errorText = errors?.actualReps ?? errors?.actualWeight;
+
+  const handleToggle = (): void => {
+    if (!onToggle()) repsRef.current?.focus(); // Reps missing: take the user straight there.
+  };
 
   return (
     <li className={`flex flex-wrap items-end gap-x-3 gap-y-2 rounded-xl p-2.5 transition-colors ${entry.completed ? 'bg-emerald-50' : 'bg-slate-50'}`}>
@@ -74,17 +82,22 @@ export function WorkoutSetRow({ row, exerciseName, entry, errors, onValue, onTog
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-slate-700">{row.setNumber}</span>
           <SetTypeBadge type={row.setType} />
-          <span className="text-slate-500">Obj. {target}</span>
+          {row.isExtra ? (
+            <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">Serie extra</span>
+          ) : (
+            <span className="text-slate-500">Obj. {target}</span>
+          )}
+          {removable && <IconButton icon={X} tone="danger" label={`Quitar serie extra ${row.setNumber} de ${exerciseName}`} onClick={onRemove} className="-my-1.5 p-1.5" />}
         </div>
         <div className="text-xs"><PreviousCell row={row} /></div>
-        {errorText && <p className="text-xs text-red-600">{errorText}</p>}
+        {errorText && <p role="alert" className="text-xs text-red-600">{errorText}</p>}
       </div>
       <div className="ml-auto flex items-end gap-2">
-        <CompactInput label="kg" decimal value={entry.weight} placeholder={toInputText(row.suggestedWeight) || '—'} error={errors?.actualWeight} onChange={(v) => onValue('weight', v)} />
-        <CompactInput label="reps" value={entry.reps} placeholder={String(row.suggestedReps)} error={errors?.actualReps} onChange={(v) => onValue('reps', v)} />
+        <CompactInput label="kg" decimal value={entry.weight} placeholder="—" error={errors?.actualWeight} onChange={(v) => onValue('weight', v)} />
+        <CompactInput label="reps" value={entry.reps} placeholder={range} error={errors?.actualReps} inputRef={repsRef} onChange={(v) => onValue('reps', v)} />
         <button
           type="button"
-          onClick={onToggle}
+          onClick={handleToggle}
           aria-pressed={entry.completed}
           // Toggle button: fixed, unique label; the state is conveyed by aria-pressed.
           aria-label={`${exerciseName}, serie ${row.setNumber} hecha`}

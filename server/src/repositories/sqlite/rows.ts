@@ -47,8 +47,9 @@ export interface PlannedSetRow {
 export interface SessionRow {
   id: string;
   workout_day_id: string;
+  started_at: string | null;
   completed_at: string;
-  duration_minutes: number | null;
+  duration_seconds: number | null;
   notes: string | null;
 }
 export interface LoggedSetRow {
@@ -131,8 +132,9 @@ export function toSession(row: SessionRow, sets: LoggedSet[]): WorkoutSession {
   return {
     id: row.id,
     workoutDayId: row.workout_day_id,
+    startedAt: row.started_at,
     completedAt: row.completed_at,
-    durationMinutes: row.duration_minutes,
+    durationSeconds: row.duration_seconds,
     notes: row.notes,
     sets,
   };

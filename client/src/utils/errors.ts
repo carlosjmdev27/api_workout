@@ -15,6 +15,7 @@ const MESSAGES: Record<string, string> = {
   EXERCISE_LIMIT_REACHED: `Una tabla no puede tener más de ${LIMITS.EXERCISES_PER_DAY_MAX} ejercicios.`,
   INVALID_SESSION_EXERCISE: 'La sesión incluye ejercicios que ya no están en la tabla. Recarga la página.',
   INVALID_SESSION_DATE: 'La fecha del entrenamiento no puede ser futura.',
+  INVALID_SESSION_DURATION: 'El entrenamiento dura demasiado (más de 10 h). Descártalo y empieza de nuevo.',
   PAYLOAD_TOO_LARGE: 'Los datos enviados son demasiado grandes.',
   INTERNAL_ERROR: 'Error inesperado del servidor. Inténtalo de nuevo más tarde.',
 };

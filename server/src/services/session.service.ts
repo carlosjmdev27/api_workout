@@ -1,7 +1,13 @@
-import { LIMITS, type DayExercise, type SessionInput, type WorkoutSession } from '@gym/shared';
+import {
+  LIMITS,
+  type DayExercise,
+  type SessionInput,
+  type WorkoutSession,
+  type WorkoutSessionDetail,
+} from '@gym/shared';
 import { BusinessRuleError } from '../errors/app-error.js';
 import type { SessionRepository } from '../repositories/session.repository.js';
-import type { NewLoggedSetRecord, NewSessionRecord } from '../types/session.types.js';
+import type { NewLoggedSetRecord } from '../types/session.types.js';
 import { sessionNotFound } from './errors.js';
 import type { WorkoutDayService } from './workout-day.service.js';
 
@@ -20,17 +26,23 @@ export class SessionService {
 
   async create(input: SessionInput): Promise<WorkoutSession> {
     const day = await this.days.getById(input.workoutDayId);
-    const completedAt = this.resolveCompletedAt(input.completedAt);
+    const durationSeconds = this.computeDuration(input.startedAt, input.completedAt);
     const exercisesById = new Map(day.exercises.map((exercise) => [exercise.id, exercise]));
 
-    const record: NewSessionRecord = {
+    return this.sessions.create({
       workoutDayId: day.id,
-      completedAt,
-      durationMinutes: input.durationMinutes ?? null,
+      startedAt: input.startedAt,
+      completedAt: input.completedAt,
+      durationSeconds,
       notes: input.notes ?? null,
       sets: input.sets.map((set) => this.toRecord(set, exercisesById)),
-    };
-    return this.sessions.create(record);
+    });
+  }
+
+  async getById(sessionId: string): Promise<WorkoutSessionDetail> {
+    const session = await this.sessions.findById(sessionId);
+    if (!session) throw sessionNotFound(sessionId);
+    return session;
   }
 
   async historyByDay(dayId: string): Promise<WorkoutSession[]> {
@@ -42,12 +54,19 @@ export class SessionService {
     if (!(await this.sessions.delete(sessionId))) throw sessionNotFound(sessionId);
   }
 
-  private resolveCompletedAt(completedAt: string | undefined): string {
-    if (completedAt === undefined) return new Date().toISOString();
+  /** Single source of truth for the duration: the two timestamps (order already checked by Zod). */
+  private computeDuration(startedAt: string, completedAt: string): number {
     if (Date.parse(completedAt) > Date.now() + FUTURE_TOLERANCE_MS) {
       throw new BusinessRuleError('INVALID_SESSION_DATE', 'completedAt cannot be in the future');
     }
-    return completedAt;
+    const seconds = Math.floor((Date.parse(completedAt) - Date.parse(startedAt)) / 1000);
+    if (seconds > LIMITS.SESSION_DURATION_MAX_SECONDS) {
+      throw new BusinessRuleError(
+        'INVALID_SESSION_DURATION',
+        `A session cannot last more than ${LIMITS.SESSION_DURATION_MAX_SECONDS / 3600} hours`,
+      );
+    }
+    return seconds;
   }
 
   /** Each logged set must belong to an exercise of this day; snapshots its name/order. */
@@ -69,8 +88,7 @@ export class SessionService {
       setNumber: set.setNumber,
       setType: set.setType,
       actualWeight: set.actualWeight ?? null,
-      actualReps: set.actualReps ?? null,
-      completed: set.completed,
+      actualReps: set.actualReps,
     };
   }
 }

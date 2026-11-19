@@ -19,6 +19,10 @@ export class SessionController {
     sendSuccess(res, 201, await this.service.create(req.body));
   };
 
+  getById = async (req: Request<SessionParams>, res: Response): Promise<void> => {
+    sendSuccess(res, 200, await this.service.getById(req.params.sessionId));
+  };
+
   historyByDay = async (req: Request<DayParams>, res: Response): Promise<void> => {
     sendSuccess(res, 200, await this.service.historyByDay(req.params.dayId));
   };

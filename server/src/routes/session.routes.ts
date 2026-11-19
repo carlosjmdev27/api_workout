@@ -8,6 +8,7 @@ export function createSessionRouter(controller: SessionController): Router {
   const router = Router();
 
   router.post('/sessions', validateBody(sessionInputSchema), controller.create);
+  router.get('/sessions/:sessionId', validateParams(sessionParamsSchema), controller.getById);
   router.delete('/sessions/:sessionId', validateParams(sessionParamsSchema), controller.delete);
   router.get('/days/:dayId/history', validateParams(dayParamsSchema), controller.historyByDay);
 

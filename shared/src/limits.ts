@@ -12,8 +12,11 @@ export const LIMITS = {
   WEIGHT_MAX_KG: 1000,
   RIR_MAX: 10,
 
+  /** Planned sets + extra sets added on the fly during a workout. */
+  LOGGED_SET_NUMBER_MAX: 30,
   /** Keeps a full session payload under the 10 KB JSON limit of the API. */
   SESSION_SETS_MAX: 60,
-  SESSION_DURATION_MAX_MINUTES: 600,
+  /** 10 h: anything longer is a forgotten, never-finished workout. */
+  SESSION_DURATION_MAX_SECONDS: 36_000,
   HISTORY_SESSIONS_MAX: 50,
 } as const;

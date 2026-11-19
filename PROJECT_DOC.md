@@ -23,6 +23,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 | Fase 3 v2: constructor de tablas y series (frontend) | ✅ Completada |
 | Fase 4 v2: modo entrenamiento activo e historial | ✅ Completada |
 
+**Actualización §8 de la spec (v3: ciclo de vida de la sesión):** ✅ Completada (2026-11-19).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -840,3 +842,98 @@ Por petición del usuario se simularon una rutina y entrenamientos para ver la a
 - Por petición del usuario se eliminó la rutina de ejemplo «Torso-Pierna 4 días», con sus 4 tablas y 24 sesiones (el usuario no había añadido sesiones propias). Se usó el repositorio de la app, comprobando antes el id y el nombre.
 - La base de datos real queda vacía: 0 filas en las 6 tablas.
 - Se suben a GitHub todos los commits locales pendientes.
+---
+
+## 2026-11-19 · Actualización §8 (v3): planificación vs. ejecución y ciclo de vida de la sesión
+
+### Análisis previo
+
+Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecución separada de la plantilla, inputs reales, check, columna "Anterior", cronómetro por diferencia de tiempos y borrador. Se propusieron alternativas en 4 puntos y **el usuario aceptó las 4 recomendaciones**:
+
+| Punto | Spec | Decisión | Motivo |
+|-------|------|----------|--------|
+| Reps al marcar ✓ | Obligatorias | **Obligatorias** (se elimina el autocompletado de reps de la v2) | Evita registrar reps que no se hicieron |
+| Botones | Todo en una barra superior fija | **Arriba**: nombre, cronómetro, progreso y Cancelar. **Abajo**: Terminar entrenamiento | El botón principal queda al alcance del pulgar en el móvil |
+| Duración | El cliente envía `duration_seconds` | **La calcula el servidor** a partir de `startedAt` y `completedAt` | Una sola fuente de verdad; datos que no se contradicen |
+| Resumen | Pantalla tras terminar | **Página propia de cada sesión** (`/sessions/:id`), que también se abre desde el historial | Se puede consultar después |
+
+**Otras decisiones de Claude, sin consulta:**
+- **Un único entrenamiento activo**, con un aviso en toda la app.
+- **Se mantiene camelCase en la API** (la spec usaba `workout_day_id` y `exercise_id`).
+- **Se adopta la ruta de la spec**, `/workout/active/:dayId`.
+
+### Backend
+
+- **Contrato (`@gym/shared`):**
+  - `sessionInputSchema` exige `startedAt` y `completedAt` (ISO), con la regla `startedAt <= completedAt`. El esquema estricto **rechaza que el cliente envíe una duración**.
+  - Los sets ya no llevan `completed` (solo se envían series hechas) y `actualReps` pasa a ser **obligatorio**.
+  - `setNumber` puede llegar a 30 (`LOGGED_SET_NUMBER_MAX`) para las **series extra**.
+  - `WorkoutSession` tiene `startedAt` (null en las sesiones anteriores a la v3) y `durationSeconds`.
+  - Nuevo tipo `WorkoutSessionDetail`, con `dayName`, `routineId` y `routineName`.
+- **Migración v3:** `ADD COLUMN started_at`, `ADD COLUMN duration_seconds` (CHECK ≥ 0), conversión minutos → segundos y `DROP COLUMN duration_minutes` (soportado por SQLite 3.53, se comprobó antes).
+- **`SessionService`:**
+  - Calcula `durationSeconds = (completedAt − startedAt) / 1000`.
+  - Más de 10 h → 422 `INVALID_SESSION_DURATION`.
+  - Fecha futura → 422 `INVALID_SESSION_DATE`.
+  - Guarda todas las series como completadas.
+- **Nuevo endpoint `GET /api/sessions/:sessionId`**, que devuelve la sesión con los nombres de su tabla y su rutina.
+- `GET /days/:dayId/history` devuelve ahora `durationSeconds` y `startedAt`.
+
+### Frontend
+
+- **Entrenamiento activo único** (`features/workout/active-workout.ts`):
+  - Se guarda en `localStorage` (`active_workout_draft`) **en cuanto se entra**, con el `startedAt`. Recargar o bloquear el móvil no reinicia el cronómetro.
+  - El borrador se valida con Zod y se olvida pasadas 12 h.
+  - `useSyncExternalStore` sincroniza todas las vistas y las demás pestañas.
+- **Aviso "Entrenamiento en curso"** (`ActiveWorkoutBanner`) en todas las páginas salvo la del propio entrenamiento: muestra el cronómetro y lleva a "Reanudar". El `Layout` lo recibe como *slot*, así que `components/` no depende de ninguna funcionalidad.
+- **Si se intenta iniciar otra tabla** con un entrenamiento activo, aparece una pantalla para **Reanudar** el actual o **Descartarlo y empezar esta**. Nunca se sobrescribe sin preguntar.
+- **`ActiveWorkoutTimer` (HH:MM:SS):** siempre `Date.now() − startedAt`, nunca sumando segundos. Se recalcula también al volver a la pestaña (`visibilitychange`).
+- **Cada serie:**
+  - Peso **pre-rellenado** con el último usado o, si no hay, con el objetivo.
+  - Reps **vacías**, con el rango como placeholder ("6-8").
+  - ✓ sin reps → "Escribe las reps hechas" y el foco salta al campo de reps.
+- **"+ Serie extra"** por ejercicio: copia el tipo y el objetivo de la última serie, no modifica la plantilla y solo se puede quitar la última extra, si no está marcada.
+- **Terminar:**
+  - Si hay series con reps escritas pero sin marcar, se pregunta: guardarlas también, guardar solo las marcadas o volver.
+  - Se valida con `sessionInputSchema`, se borra el borrador y se va al resumen.
+- **Cancelar** (con confirmación) borra el borrador y vuelve a la rutina.
+- **Resumen** (`/sessions/:id`, `SessionSummaryPage`):
+  - Cifras clave (duración, peso movido, series y reps) con su diferencia respecto a la sesión anterior de la misma tabla.
+  - **Comparativa por ejercicio**: mejor serie hoy frente a la anterior, e1RM y Δ, más la insignia **Récord** (con icono y texto) si supera el mejor e1RM de todo el historial anterior. Igualarlo no cuenta.
+  - Todas las series y las notas.
+  - En el historial, cada sesión tiene un botón "Ver resumen".
+- **Refactor:** `bestSet()` en `stats.ts` (compartido por el historial y el resumen), `SessionSetsList` reutilizable, `signedDelta`/`formatClock` en `utils/format.ts` y `formatDuration` en segundos.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` y `npm audit` | ✅ / 0 vulnerabilidades |
+| Migración v3 sobre **copias** (la DB real y una DB v2 con 4 sesiones) | ✅ minutos → segundos correctos, `started_at` NULL en las antiguas, integridad OK |
+| API v3 (base de datos temporal) | ✅ 12/12 |
+| Flujos de interfaz con Edge vía CDP | ✅ 15/15 |
+| Capturas revisadas | Entrenamiento y resumen, en escritorio y móvil |
+| **Base de datos real** | Hash idéntico de `.sqlite`, `-wal` y `-shm` antes y después ✅. No se ha migrado: la v3 se aplicará al arrancar la API |
+
+**Qué cubre la prueba de la API:**
+- Duración calculada (3700 s).
+- Serie extra aceptada.
+- Detalle con nombres.
+- Rechazos: orden de fechas, más de 10 h, fecha futura, sin reps, `setNumber` 31 y una duración enviada por el cliente.
+
+**Qué cubren los flujos de interfaz:**
+- Borrador guardado al entrar.
+- Peso pre-rellenado y reps vacías.
+- Cronómetro HH:MM:SS.
+- ✓ bloqueado sin reps (con foco en el campo).
+- Al recargar se mantienen el inicio y las series.
+- El aviso aparece en otras páginas y permite reanudar.
+- Pantalla de conflicto con otra tabla.
+- Serie extra.
+- Diálogo de series sin marcar → resumen con récord, serie extra guardada y la no marcada descartada.
+- Borrador limpio al terminar.
+- Cancelar.
+
+**Incidencias del test (no eran fallos de la app):**
+1. Se buscaba "70 kg × 10" en toda la página, pero aparece correctamente en la columna "Anterior". La comprobación se limitó a la sección de series.
+2. Una segunda ejecución igualaba la marca anterior, y **igualar no es récord**. El test ahora escribe las reps anteriores + 1.

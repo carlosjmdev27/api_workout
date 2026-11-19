@@ -1,97 +1,118 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SessionInput, WorkoutDayDetail, WorkoutSession } from '@gym/shared';
 import type { FieldErrors } from '../../utils/validation';
-import { clearDraft, loadDraft, saveDraft, type DraftEntries } from './workout-draft';
 import {
-  EMPTY_ENTRY,
-  buildGroups,
-  buildSessionPayload,
-  completeEntry,
-  hasData,
+  clearActiveWorkout,
+  loadActiveWorkout,
+  saveActiveWorkout,
+  type ActiveWorkout,
   type RowEntry,
-} from './workout-model';
+} from './active-workout';
+import { buildGroups, buildSessionPayload, completionErrors, entryFor, isPending, rowKey } from './workout-model';
 
-interface SessionState {
-  startedAt: number;
-  notes: string;
-  entries: DraftEntries;
+function freshWorkout(day: WorkoutDayDetail): ActiveWorkout {
+  return {
+    version: 2,
+    dayId: day.id,
+    dayName: day.name,
+    routineId: day.routineId,
+    startedAt: new Date().toISOString(),
+    notes: '',
+    entries: {},
+    extras: {},
+  };
 }
 
-const freshState = (): SessionState => ({ startedAt: Date.now(), notes: '', entries: {} });
-
-/** State of an active workout: entries per set, ghost data, draft and payload. */
+/** State of the active workout. Persisted from the very first render (timer never resets). */
 export function useWorkoutSession(day: WorkoutDayDetail, lastSession: WorkoutSession | undefined) {
-  const groups = useMemo(() => buildGroups(day, lastSession), [day, lastSession]);
-  const rows = useMemo(() => groups.flatMap((group) => group.rows), [groups]);
-  const [restored] = useState(() => loadDraft(day.id));
-  const [state, setState] = useState<SessionState>(() => restored ?? freshState());
+  const [resumed] = useState(() => loadActiveWorkout()?.dayId === day.id);
+  const [state, setState] = useState<ActiveWorkout>(() => {
+    const existing = loadActiveWorkout();
+    return existing?.dayId === day.id ? existing : freshWorkout(day);
+  });
   const [rowErrors, setRowErrors] = useState<Record<string, FieldErrors>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
-  const entryOf = (key: string): RowEntry => state.entries[key] ?? EMPTY_ENTRY;
-  const hasProgress = state.notes.trim() !== '' || Object.values(state.entries).some(hasData);
+  useEffect(() => saveActiveWorkout(state), [state]);
 
-  // Persist only once there is something worth recovering.
-  useEffect(() => {
-    if (hasProgress) saveDraft(day.id, state);
-  }, [day.id, state, hasProgress]);
+  const groups = useMemo(() => buildGroups(day, lastSession, state.extras), [day, lastSession, state.extras]);
+  const rows = useMemo(() => groups.flatMap((group) => group.rows), [groups]);
+  const rowByKey = useMemo(() => new Map(rows.map((row) => [row.key, row])), [rows]);
 
-  const updateEntry = (key: string, next: RowEntry): void => {
-    setState((previous) => ({ ...previous, entries: { ...previous.entries, [key]: next } }));
+  const entryOf = (key: string): RowEntry => {
+    const row = rowByKey.get(key);
+    return row ? entryFor(row, state.entries) : { weight: '', reps: '', completed: false };
+  };
+
+  const setEntry = (key: string, entry: RowEntry): void => {
+    setState((previous) => ({ ...previous, entries: { ...previous.entries, [key]: entry } }));
+  };
+
+  const setRowError = (key: string, errors: FieldErrors | null): void => {
     setRowErrors((previous) => {
       const next = { ...previous };
-      delete next[key];
+      if (errors) next[key] = errors;
+      else delete next[key];
       return next;
     });
   };
 
   const setValue = (key: string, field: 'weight' | 'reps', value: string): void => {
-    updateEntry(key, { ...entryOf(key), [field]: value });
+    setEntry(key, { ...entryOf(key), [field]: value });
+    setRowError(key, null);
   };
 
-  const toggle = (key: string): void => {
-    const row = rows.find((candidate) => candidate.key === key);
+  /** Returns false when the set cannot be ticked yet (reps missing/invalid). */
+  const toggle = (key: string): boolean => {
     const entry = entryOf(key);
-    if (!row) return;
-    updateEntry(key, entry.completed ? { ...entry, completed: false } : completeEntry(entry, row));
+    if (entry.completed) {
+      setEntry(key, { ...entry, completed: false });
+      return true;
+    }
+    const errors = completionErrors(entry);
+    setRowError(key, errors);
+    if (!errors) setEntry(key, { ...entry, completed: true });
+    return errors === null;
   };
 
-  const setNotes = (notes: string): void => setState((previous) => ({ ...previous, notes }));
-
-  const discard = (): void => {
-    clearDraft(day.id);
-    setState(freshState());
-    setRowErrors({});
-    setFormError(null);
+  const changeExtras = (exerciseId: string, delta: 1 | -1): void => {
+    setState((previous) => {
+      const count = Math.max(0, (previous.extras[exerciseId] ?? 0) + delta);
+      const entries = { ...previous.entries };
+      if (delta === -1) {
+        const planned = day.exercises.find((e) => e.id === exerciseId)?.sets.length ?? 0;
+        delete entries[rowKey(exerciseId, planned + count + 1)];
+      }
+      return { ...previous, entries, extras: { ...previous.extras, [exerciseId]: count } };
+    });
   };
 
-  /** Validates; returns the payload or shows the errors. */
-  const buildPayload = (): SessionInput | null => {
-    const result = buildSessionPayload(day.id, rows, state.entries, state);
+  const buildPayload = (includePending: boolean): SessionInput | null => {
+    const result = buildSessionPayload(day.id, rows, state.entries, { ...state, includePending });
     setRowErrors(result.ok ? {} : result.rowErrors);
     setFormError(result.ok ? null : result.message);
     return result.ok ? result.data : null;
   };
 
-  const completedCount = rows.filter((row) => entryOf(row.key).completed).length;
-
+  const entries = rows.map((row) => entryOf(row.key));
   return {
     groups,
     startedAt: state.startedAt,
     notes: state.notes,
-    wasRestored: restored !== null,
-    hasProgress,
-    completedCount,
-    totalCount: rows.length,
+    resumed,
     rowErrors,
     formError,
+    completedCount: entries.filter((entry) => entry.completed).length,
+    pendingCount: entries.filter(isPending).length,
+    totalCount: rows.length,
     entryOf,
     setValue,
     toggle,
-    setNotes,
-    discard,
+    addExtra: (exerciseId: string) => changeExtras(exerciseId, 1),
+    removeExtra: (exerciseId: string) => changeExtras(exerciseId, -1),
+    setNotes: (notes: string) => setState((previous) => ({ ...previous, notes })),
     buildPayload,
-    clearDraft: () => clearDraft(day.id),
+    discard: clearActiveWorkout,
   };
 }
 

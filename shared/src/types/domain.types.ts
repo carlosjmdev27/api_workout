@@ -68,8 +68,18 @@ export interface LoggedSet {
 export interface WorkoutSession {
   id: string;
   workoutDayId: string;
+  /** null only for sessions saved before v3 (no start time was recorded). */
+  startedAt: string | null; // ISO 8601
   completedAt: string; // ISO 8601
-  durationMinutes: number | null;
+  /** Computed by the server: completedAt - startedAt. */
+  durationSeconds: number | null;
   notes: string | null;
   sets: LoggedSet[];
+}
+
+/** A session plus the names needed to show it on its own page (summary). */
+export interface WorkoutSessionDetail extends WorkoutSession {
+  dayName: string;
+  routineId: string;
+  routineName: string;
 }

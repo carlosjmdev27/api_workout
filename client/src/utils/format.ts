@@ -15,11 +15,27 @@ export function formatShortDate(iso: string): string {
   return shortDateFormat.format(new Date(iso));
 }
 
-/** 65 -> "1 h 05 min"; 40 -> "40 min". */
-export function formatDuration(minutes: number): string {
+/** Seconds -> "1 h 05 min" / "40 min" / "45 s". */
+export function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds} s`;
+  const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return hours === 0 ? `${rest} min` : `${hours} h ${String(rest).padStart(2, '0')} min`;
+}
+
+/** "+320 kg" / "−2" / "=" — signed difference (text, never colour alone). */
+export function signedDelta(value: number, unit = ''): string {
+  if (value === 0) return '=';
+  const rounded = Math.round(Math.abs(value) * 10) / 10;
+  return `${value > 0 ? '+' : '−'}${formatNumber(rounded)}${unit ? ` ${unit}` : ''}`;
+}
+
+/** Milliseconds -> "HH:MM:SS" (stopwatch). */
+export function formatClock(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
 }
 
 export function formatWeight(kg: number): string {
