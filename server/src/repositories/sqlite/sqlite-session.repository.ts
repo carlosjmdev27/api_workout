@@ -11,6 +11,7 @@ const LOGGED_COLS = `id, session_id, day_exercise_id, exercise_name, exercise_po
 
 interface SessionParams {
   id: string;
+  userId: string;
   dayId: string;
   startedAt: string;
   completedAt: string;
@@ -55,8 +56,8 @@ export class SqliteSessionRepository implements SessionRepository {
     const latestIds = `SELECT id FROM workout_sessions WHERE workout_day_id = ? ORDER BY completed_at DESC LIMIT ?`;
     this.stmt = {
       insertSession: db.prepare(`
-        INSERT INTO workout_sessions (${SESSION_COLS})
-        VALUES (@id, @dayId, @startedAt, @completedAt, @duration, @notes)`),
+        INSERT INTO workout_sessions (${SESSION_COLS}, user_id)
+        VALUES (@id, @dayId, @startedAt, @completedAt, @duration, @notes, @userId)`),
       // Only completed sets are recorded since v3 (completed = 1).
       insertSet: db.prepare(`
         INSERT INTO logged_sets (${LOGGED_COLS})
@@ -87,6 +88,7 @@ export class SqliteSessionRepository implements SessionRepository {
     this.db.transaction(() => {
       this.stmt.insertSession.run({
         id,
+        userId: record.userId,
         dayId: record.workoutDayId,
         startedAt: record.startedAt,
         completedAt: record.completedAt,

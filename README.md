@@ -14,8 +14,11 @@ Aplicación web para crear rutinas de gimnasio, entrenar con ellas y seguir la p
 Requisito: Docker con Docker Compose v2.
 
 ```bash
+cp .env.example .env           # y pon en JWT_SECRET un valor aleatorio largo (ver el archivo)
 docker compose up -d --build   # construir y arrancar
 ```
+
+Sin `JWT_SECRET` en `.env`, Compose no arranca.
 
 Abre **http://localhost:8080**.
 
@@ -55,6 +58,14 @@ docker compose start backend
 
 Si junto a `gym.sqlite` existe `gym.sqlite-wal`, cópialo también (con el mismo nombre) y añádelo al `chown`. Esto sustituye los datos que hubiera en el volumen.
 
+## Cuentas y privacidad
+
+- Cada usuario solo ve sus rutinas, su historial y sus ejercicios propios. El catálogo base es común.
+- Contraseñas con bcrypt y sesión con JWT (7 días). Login y registro limitados a 10 intentos cada 15 minutos por IP.
+- **La primera cuenta que se registra** se queda con los datos creados antes de que existiera el login.
+- Cuando ya tengas tu cuenta, cierra el registro público: `ALLOW_REGISTRATION=false` en `.env` (Docker) o en `server/.env` (desarrollo), y reinicia.
+- Antes de exponer la app fuera de tu red local, sírvela con **HTTPS**.
+
 ## En desarrollo
 
 Requisito: Node.js 22.
@@ -63,6 +74,7 @@ Requisito: Node.js 22.
 npm install
 cp server/.env.example server/.env
 cp client/.env.example client/.env
+# Edita server/.env y pon en JWT_SECRET un valor aleatorio de 32 caracteres o más
 npm run dev        # shared (watch) + API en :3000 + web en :5173
 npm run check      # typecheck + lint + build
 ```

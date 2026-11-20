@@ -19,4 +19,10 @@ export const LIMITS = {
   /** 10 h: anything longer is a forgotten, never-finished workout. */
   SESSION_DURATION_MAX_SECONDS: 36_000,
   HISTORY_SESSIONS_MAX: 50,
+
+  /** RFC 5321 practical maximum for an email address. */
+  EMAIL_MAX: 254,
+  PASSWORD_MIN: 8,
+  /** bcrypt only uses the first 72 bytes: longer passwords are rejected, not silently cut. */
+  PASSWORD_MAX_BYTES: 72,
 } as const;

@@ -19,6 +19,7 @@ export * from './schemas/workout-day.schema.js';
 export * from './schemas/day-exercise.schema.js';
 export * from './schemas/session.schema.js';
 export * from './schemas/catalog.schema.js';
+export * from './schemas/auth.schema.js';
 
 export type * from './types/domain.types.js';
 export type * from './types/api.types.js';

@@ -9,7 +9,7 @@ export function securityMiddlewares(allowedOrigin: string): RequestHandler[] {
     cors({
       origin: allowedOrigin,
       methods: ['GET', 'POST', 'PUT', 'DELETE'],
-      allowedHeaders: ['Content-Type'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
       maxAge: 600, // Cache preflight responses for 10 minutes.
     }),
   ];

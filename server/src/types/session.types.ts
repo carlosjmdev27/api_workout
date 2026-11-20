@@ -16,6 +16,8 @@ export interface NewLoggedSetRecord {
 }
 
 export interface NewSessionRecord {
+  /** Owner (taken from the token, never from the request body). */
+  userId: string;
   workoutDayId: string;
   startedAt: string;
   completedAt: string;

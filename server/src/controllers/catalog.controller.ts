@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import type { CatalogExerciseInput, CatalogQuery } from '@gym/shared';
 import type { CatalogService } from '../services/catalog.service.js';
+import { userIdOf } from '../middlewares/auth.middleware.js';
 import { sendSuccess } from './response.js';
 
 type NoParams = Record<string, string>;
@@ -14,10 +15,10 @@ export class CatalogController {
   }
 
   search = async (req: Request<NoParams, unknown, unknown, CatalogQuery>, res: Response): Promise<void> => {
-    sendSuccess(res, 200, await this.service.search(req.query));
+    sendSuccess(res, 200, await this.service.search(userIdOf(req), req.query));
   };
 
   create = async (req: Request<NoParams, unknown, CatalogExerciseInput>, res: Response): Promise<void> => {
-    sendSuccess(res, 201, await this.service.createCustom(req.body));
+    sendSuccess(res, 201, await this.service.createCustom(userIdOf(req), req.body));
   };
 }

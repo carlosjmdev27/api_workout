@@ -14,6 +14,21 @@ export class AppError extends Error {
   }
 }
 
+/** Missing, invalid or expired credentials / token. */
+export class UnauthorizedError extends AppError {
+  constructor(code: string, message: string) {
+    super(401, code, message);
+    this.name = 'UnauthorizedError';
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(code: string, message: string) {
+    super(403, code, message);
+    this.name = 'ForbiddenError';
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(code: string, message: string) {
     super(404, code, message);

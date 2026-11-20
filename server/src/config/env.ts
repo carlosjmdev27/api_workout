@@ -15,6 +15,15 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535),
   CORS_ORIGIN: z.url(),
   DATABASE_PATH: z.string().min(1),
+  /** Signs the session tokens. Long random value; changing it logs everybody out. */
+  JWT_SECRET: z
+    .string()
+    .min(32, 'JWT_SECRET must have at least 32 characters')
+    .refine((value) => !value.startsWith('change-me'), 'JWT_SECRET still has the .env.example placeholder'),
+  /** Set to false once your accounts exist, to close public sign-up. */
+  ALLOW_REGISTRATION: z.stringbool().default(true),
+  /** Reverse proxies in front of the API (1 behind nginx in Docker), so rate limiting sees the real IP. */
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
 });
 
 export type Env = z.infer<typeof envSchema>;

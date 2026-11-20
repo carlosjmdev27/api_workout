@@ -1,4 +1,5 @@
 import type { ApiError as ApiErrorBody, ApiErrorDetail, ApiSuccess } from '@gym/shared';
+import { clearToken, getToken, notifySessionExpired } from './auth-token';
 
 function readApiUrl(): string {
   const url = import.meta.env.VITE_API_URL;
@@ -53,15 +54,28 @@ async function readJson(response: Response): Promise<unknown> {
 
 async function send(method: HttpMethod, path: string, body?: unknown): Promise<Response> {
   const hasBody = body !== undefined;
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (hasBody) headers['Content-Type'] = 'application/json';
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  let response: Response;
   try {
-    return await fetch(`${BASE_URL}${path}`, {
+    response = await fetch(`${BASE_URL}${path}`, {
       method,
-      headers: hasBody ? { 'Content-Type': 'application/json' } : undefined,
+      headers,
       body: hasBody ? JSON.stringify(body) : undefined,
     });
   } catch {
     throw new ApiRequestError(0, 'NETWORK_ERROR', 'Could not reach the API');
   }
+  // Our token was rejected (expired / invalid): end the session everywhere.
+  // A 401 without token (wrong password at login) is just a normal error.
+  if (response.status === 401 && token) {
+    clearToken();
+    notifySessionExpired();
+  }
+  return response;
 }
 
 async function toApiError(response: Response): Promise<ApiRequestError> {

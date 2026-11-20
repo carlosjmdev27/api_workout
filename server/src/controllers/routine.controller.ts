@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import type { RoutineInput, RoutineUpdate } from '@gym/shared';
 import type { RoutineParams } from '../schemas/params.schema.js';
 import type { RoutineService } from '../services/routine.service.js';
+import { userIdOf } from '../middlewares/auth.middleware.js';
 import { sendNoContent, sendSuccess } from './response.js';
 
 /**
@@ -15,27 +16,27 @@ export class RoutineController {
     this.service = service;
   }
 
-  list = async (_req: Request, res: Response): Promise<void> => {
-    sendSuccess(res, 200, await this.service.list());
+  list = async (req: Request, res: Response): Promise<void> => {
+    sendSuccess(res, 200, await this.service.list(userIdOf(req)));
   };
 
   getById = async (req: Request<RoutineParams>, res: Response): Promise<void> => {
-    sendSuccess(res, 200, await this.service.getById(req.params.routineId));
+    sendSuccess(res, 200, await this.service.getById(userIdOf(req), req.params.routineId));
   };
 
   create = async (
     req: Request<Record<string, string>, unknown, RoutineInput>,
     res: Response,
   ): Promise<void> => {
-    sendSuccess(res, 201, await this.service.create(req.body));
+    sendSuccess(res, 201, await this.service.create(userIdOf(req), req.body));
   };
 
   update = async (req: Request<RoutineParams, unknown, RoutineUpdate>, res: Response): Promise<void> => {
-    sendSuccess(res, 200, await this.service.update(req.params.routineId, req.body));
+    sendSuccess(res, 200, await this.service.update(userIdOf(req), req.params.routineId, req.body));
   };
 
   delete = async (req: Request<RoutineParams>, res: Response): Promise<void> => {
-    await this.service.delete(req.params.routineId);
+    await this.service.delete(userIdOf(req), req.params.routineId);
     sendNoContent(res);
   };
 }

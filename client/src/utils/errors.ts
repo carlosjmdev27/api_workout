@@ -19,6 +19,11 @@ const MESSAGES: Record<string, string> = {
   CATALOG_EXERCISE_EXISTS: 'Ese ejercicio ya existe en el catálogo: búscalo en la lista.',
   INVALID_CATALOG_EXERCISE: 'El ejercicio del catálogo ya no existe. Elígelo de nuevo.',
   PAYLOAD_TOO_LARGE: 'Los datos enviados son demasiado grandes.',
+  INVALID_CREDENTIALS: 'Email o contraseña incorrectos.',
+  EMAIL_IN_USE: 'Ya existe una cuenta con ese email. Inicia sesión.',
+  REGISTRATION_CLOSED: 'El registro de cuentas nuevas está cerrado.',
+  TOO_MANY_REQUESTS: 'Demasiados intentos. Espera 15 minutos y vuelve a probar.',
+  UNAUTHORIZED: 'Tu sesión ha caducado. Vuelve a iniciar sesión.',
   INTERNAL_ERROR: 'Error inesperado del servidor. Inténtalo de nuevo más tarde.',
 };
 

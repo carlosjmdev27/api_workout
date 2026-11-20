@@ -21,9 +21,9 @@ interface RoutineWriteParams {
 }
 
 interface RoutineStatements {
-  findAll: Statement<[], RoutineSummaryRow>;
+  findAll: Statement<[string], RoutineSummaryRow>;
   findById: Statement<[string], RoutineRow>;
-  insert: Statement<RoutineWriteParams & { createdAt: string }>;
+  insert: Statement<RoutineWriteParams & { createdAt: string; userId: string }>;
   update: Statement<RoutineWriteParams>;
   delete: Statement<[string]>;
 }
@@ -43,12 +43,13 @@ export class SqliteRoutineRepository implements RoutineRepository {
                COUNT(d.id) AS day_count
         FROM routines r
         LEFT JOIN workout_days d ON d.routine_id = r.id
+        WHERE r.user_id = ?
         GROUP BY r.id
         ORDER BY r.updated_at DESC`),
       findById: db.prepare(`SELECT ${ROUTINE_COLUMNS} FROM routines WHERE id = ?`),
       insert: db.prepare(`
-        INSERT INTO routines (${ROUTINE_COLUMNS})
-        VALUES (@id, @name, @description, @createdAt, @updatedAt)`),
+        INSERT INTO routines (${ROUTINE_COLUMNS}, user_id)
+        VALUES (@id, @name, @description, @createdAt, @updatedAt, @userId)`),
       update: db.prepare(`
         UPDATE routines SET name = @name, description = @description, updated_at = @updatedAt
         WHERE id = @id`),
@@ -57,23 +58,20 @@ export class SqliteRoutineRepository implements RoutineRepository {
     };
   }
 
-  async findAll(): Promise<RoutineSummary[]> {
-    return this.stmt.findAll.all().map(toRoutineSummary);
+  async findAll(userId: string): Promise<RoutineSummary[]> {
+    return this.stmt.findAll.all(userId).map(toRoutineSummary);
   }
 
   async findById(id: string): Promise<RoutineDetail | null> {
     return this.findDetail(id);
   }
 
-  async exists(id: string): Promise<boolean> {
-    return this.stmt.findById.get(id) !== undefined;
-  }
-
-  async create(input: RoutineInput): Promise<RoutineDetail> {
+  async create(userId: string, input: RoutineInput): Promise<RoutineDetail> {
     const id = randomUUID();
     const now = new Date().toISOString();
     this.stmt.insert.run({
       id,
+      userId,
       name: input.name,
       description: input.description ?? null,
       createdAt: now,

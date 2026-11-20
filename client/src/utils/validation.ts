@@ -14,6 +14,7 @@ export function parseDecimal(raw: string): number | null {
 
 const CUSTOM_MESSAGES: Record<string, string> = {
   targetRepMax: 'Debe ser ≥ reps mín.',
+  password: 'Demasiado larga: máximo 72 bytes (unos 36-72 caracteres)',
 };
 
 function isEmpty(input: unknown): boolean {
@@ -34,7 +35,9 @@ function messageFor(issue: z.core.$ZodIssue): string {
     case 'invalid_type':
       return typeMessage(issue.input);
     case 'too_small':
-      if (issue.origin === 'string') return 'Campo obligatorio';
+      if (issue.origin === 'string') {
+        return Number(issue.minimum) > 1 && !isEmpty(issue.input) ? `Mínimo ${String(issue.minimum)} caracteres` : 'Campo obligatorio';
+      }
       if (issue.origin === 'array') return `Añade al menos ${String(issue.minimum)}`;
       return `Mínimo ${String(issue.minimum)}`;
     case 'too_big':
@@ -42,6 +45,8 @@ function messageFor(issue: z.core.$ZodIssue): string {
       return `Máximo ${String(issue.maximum)}`;
     case 'invalid_value':
       return 'Opción no válida';
+    case 'invalid_format':
+      return issue.format === 'email' ? 'Escribe un email válido' : 'Formato no válido';
     case 'custom':
       return CUSTOM_MESSAGES[String(issue.path.at(-1))] ?? 'Valor no válido';
     default:

@@ -11,11 +11,11 @@ import type {
  * implementation is synchronous, but a future PostgreSQL one will not.
  */
 export interface RoutineRepository {
-  findAll(): Promise<RoutineSummary[]>;
-  /** Routine with its full tree: days -> exercises -> planned sets. */
+  /** Only the routines of this user. */
+  findAll(userId: string): Promise<RoutineSummary[]>;
+  /** Routine with its full tree: days -> exercises -> planned sets (ownership checked by the service). */
   findById(id: string): Promise<RoutineDetail | null>;
-  exists(id: string): Promise<boolean>;
-  create(input: RoutineInput): Promise<RoutineDetail>;
+  create(userId: string, input: RoutineInput): Promise<RoutineDetail>;
   update(id: string, input: RoutineUpdate): Promise<Routine | null>;
   /** Deletes the routine and everything below it (days, exercises, sets, history). */
   delete(id: string): Promise<boolean>;

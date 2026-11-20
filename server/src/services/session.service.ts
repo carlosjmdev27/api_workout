@@ -8,28 +8,32 @@ import {
 import { BusinessRuleError } from '../errors/app-error.js';
 import type { SessionRepository } from '../repositories/session.repository.js';
 import type { NewLoggedSetRecord } from '../types/session.types.js';
+import type { AccessGuard } from './access.guard.js';
 import { sessionNotFound } from './errors.js';
 import type { WorkoutDayService } from './workout-day.service.js';
 
 /** Tolerance for clock differences between the device and the server. */
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 
-/** Business logic for the workout history (executed sessions). */
+/** Business logic for the workout history (executed sessions). Every call is scoped to a user. */
 export class SessionService {
   private readonly sessions: SessionRepository;
   private readonly days: WorkoutDayService;
+  private readonly access: AccessGuard;
 
-  constructor(sessions: SessionRepository, days: WorkoutDayService) {
+  constructor(sessions: SessionRepository, days: WorkoutDayService, access: AccessGuard) {
     this.sessions = sessions;
     this.days = days;
+    this.access = access;
   }
 
-  async create(input: SessionInput): Promise<WorkoutSession> {
-    const day = await this.days.getById(input.workoutDayId);
+  async create(userId: string, input: SessionInput): Promise<WorkoutSession> {
+    const day = await this.days.getById(userId, input.workoutDayId); // Also checks ownership.
     const durationSeconds = this.computeDuration(input.startedAt, input.completedAt);
     const exercisesById = new Map(day.exercises.map((exercise) => [exercise.id, exercise]));
 
     return this.sessions.create({
+      userId,
       workoutDayId: day.id,
       startedAt: input.startedAt,
       completedAt: input.completedAt,
@@ -39,18 +43,20 @@ export class SessionService {
     });
   }
 
-  async getById(sessionId: string): Promise<WorkoutSessionDetail> {
+  async getById(userId: string, sessionId: string): Promise<WorkoutSessionDetail> {
+    await this.access.assertSession(userId, sessionId);
     const session = await this.sessions.findById(sessionId);
     if (!session) throw sessionNotFound(sessionId);
     return session;
   }
 
-  async historyByDay(dayId: string): Promise<WorkoutSession[]> {
-    await this.days.getById(dayId);
+  async historyByDay(userId: string, dayId: string): Promise<WorkoutSession[]> {
+    await this.access.assertDay(userId, dayId);
     return this.sessions.findByDay(dayId, LIMITS.HISTORY_SESSIONS_MAX);
   }
 
-  async delete(sessionId: string): Promise<void> {
+  async delete(userId: string, sessionId: string): Promise<void> {
+    await this.access.assertSession(userId, sessionId);
     if (!(await this.sessions.delete(sessionId))) throw sessionNotFound(sessionId);
   }
 

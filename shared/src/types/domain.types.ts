@@ -10,6 +10,20 @@ export interface CatalogExercise {
   isCustom: boolean;
 }
 
+/** Account as exposed by the API (never includes the password hash). */
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: string;
+}
+
+/** Answer of register / login. */
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
 /** Entities as returned by the API (camelCase; the DB uses snake_case). */
 
 export interface Routine {

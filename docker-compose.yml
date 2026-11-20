@@ -14,6 +14,12 @@ services:
       CORS_ORIGIN: http://localhost:${WEB_PORT:-8080}
       # Relative to /app/server -> /app/server/database/gym.sqlite, inside the volume.
       DATABASE_PATH: ./database/gym.sqlite
+      # From the root .env file (never committed). Compose refuses to start without it.
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET in the .env file next to docker-compose.yml (see .env.example)}
+      # Set ALLOW_REGISTRATION=false in .env once your account exists, then: docker compose up -d
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      # nginx sits in front: trust one proxy hop so rate limiting sees the client's IP.
+      TRUST_PROXY: "1"
     volumes:
       # Persistent data: routines, sessions and catalog survive rebuilds and `down`.
       - gym-data:/app/server/database

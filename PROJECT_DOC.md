@@ -30,6 +30,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Actualización §11 de la spec (Docker: Dockerfiles, nginx y docker-compose con volumen persistente):** ✅ Completada (2026-11-20).
 
+**Actualización §12 de la spec (login: JWT, contraseñas con bcrypt, multiusuario y rutas protegidas):** ✅ Completada (2026-11-20).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -37,7 +39,9 @@ Revisar esta lista al empezar cada tarea.
 | # | Pendiente | Prioridad | Origen |
 |---|-----------|-----------|--------|
 | 1 | ~~Unificar tipos y límites duplicados~~ | ✅ **Resuelto** (2026-11-19). `client` y `server` usan `@gym/shared`; ya no queda ningún archivo duplicado. | Fase 3 |
-| 2 | **Rate limiting** en la API. | Alta antes de exponer la API fuera de local | Fase 2 |
+| 2 | **Rate limiting** en la API. 🟡 **Parcial** (2026-11-20): login y registro ya están limitados (10 intentos / 15 min por IP). Falta un límite general para el resto de endpoints autenticados. | Media antes de exponer la API fuera de local | Fase 2 |
+| 9 | **HTTPS** antes de exponer la app fuera de la red local. El token viaja en cada petición: sin TLS se podría capturar. | Alta antes de exponerla | Fase 9 |
+| 10 | **Gestión de la cuenta**: cambiar la contraseña, recuperarla y cerrar sesión en todos los dispositivos (hoy un token vale 7 días o hasta cambiar `JWT_SECRET`). | Media | Fase 9 |
 | 3 | **Tests automatizados** en el repo. Hasta ahora las pruebas han sido scripts temporales. | Media | Fase 2 |
 | 5 | **Privacidad de los `.md` de la raíz** (detalle abajo). Decisión aplazada por el usuario el 2026-11-19. | Media: decidir antes de añadir información sensible a la documentación | Fase 4 v2 |
 | 6 | **Gestionar los ejercicios propios del catálogo** (renombrar, cambiar el grupo muscular, borrar). Hoy un ejercicio mal clasificado queda así para siempre. | Media | v4 |
@@ -1155,3 +1159,84 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
 - **Verificado por la API de Docker** (http://localhost:8080): rutina "PPL", 1 tabla, 3 ejercicios, 2 sesiones (8 series) y catálogo de 120.
 - A partir de aquí, **Docker y `npm run dev` tienen bases de datos separadas**; los cambios en una no aparecen en la otra.
 - El stack de Docker queda **en marcha** (`restart: unless-stopped`: vuelve a arrancar con Docker Desktop hasta que se haga `docker compose down`).
+
+---
+
+## 2026-11-20 · Actualización §12: autenticación, multiusuario y rutas protegidas
+
+### Seguridad
+
+| Requisito de la spec | Implementación |
+|----------------------|----------------|
+| Contraseñas hasheadas | **bcryptjs**, coste 12 (≈ 0,25 s por hash). Es JS puro, sin compilación nativa en `node:alpine`. |
+| JWT | HS256 con `JWT_SECRET` (≥ 32 caracteres; se rechaza el valor de ejemplo `change-me…`). Caduca a los **7 días**. El payload solo lleva `userId`. Al verificar se **fija el algoritmo** (rechaza `alg: none`). |
+| `userId` nunca del body | Solo sale del token verificado (`req.user`). Los esquemas son estrictos: un `userId` en el body da 400. |
+| Rate limiting | `express-rate-limit`: 10 intentos / 15 min por IP en `/auth/login` (solo cuentan los **fallidos**) y en `/auth/register` (cuentan todos). Responde 429 con el JSON estándar. En Docker, `TRUST_PROXY=1` para ver la IP real detrás de nginx. |
+| Errores de login genéricos | Email inexistente y contraseña errónea dan el **mismo** 401 `INVALID_CREDENTIALS`. Además, con un email inexistente también se ejecuta bcrypt (hash ficticio): **el tiempo de respuesta no revela qué emails existen** (medido: 215 ms frente a 218 ms). |
+| `ALLOW_REGISTRATION` | `false` → 403 `REGISTRATION_CLOSED`. El login sigue funcionando. |
+
+- **Propiedad: otro usuario recibe 404, no 403.** Así responde igual que si el recurso no existiera y no se pueden descubrir ids de otras cuentas. Aplica también a las rutas `/api` inexistentes, que dan 401 sin sesión.
+- **CORS:** se permite la cabecera `Authorization` (en desarrollo web y API van en puertos distintos).
+- **Token en `localStorage`** (la spec pide `Authorization: Bearer`). Para mitigar el riesgo de XSS, nginx envía una **Content-Security-Policy estricta** (`script-src 'self'`, sin orígenes externos) y la app nunca pinta HTML no confiable.
+
+### Modelo de datos (migración v5)
+
+- Tabla **`users`** (`email` único, guardado en minúsculas y sin espacios; `password_hash`; `name`; `created_at`).
+- **`user_id`** (FK `ON DELETE CASCADE`) en `routines`, `workout_sessions` y `exercise_catalog` (solo en los ejercicios propios). Las tablas, ejercicios y series heredan el dueño de su rutina.
+- **Catálogo reconstruido** con el procedimiento oficial de SQLite (claves foráneas desactivadas solo durante esa migración y `foreign_key_check` antes de confirmarla). El nombre era único para todos; ahora:
+  - los ejercicios **base** son únicos por nombre;
+  - los **propios** son únicos **por usuario**: dos usuarios pueden tener cada uno su "Remo Kroc";
+  - un propio no puede llamarse igual que uno base (409).
+- El ejecutor de migraciones admite ahora migraciones con `disableForeignKeys`. Las anteriores no cambian.
+
+### Datos existentes → primera cuenta
+
+- Tras migrar, las rutinas, sesiones y ejercicios propios anteriores quedan **sin dueño** (`user_id NULL`): no los ve nadie.
+- **El primer registro se los queda**, en la misma transacción en que se crea la cuenta (dos registros simultáneos no pueden quedárselos a la vez). La API lo deja en el log: `First account created: existing routines and history assigned to user …`.
+- ⚠️ La base de datos de `npm run dev` y la de Docker son **distintas**: cada una asigna sus datos a la primera cuenta que se registre **en ella**.
+
+### Backend
+
+- **Nuevos:**
+  - Repositorios: `user` y `ownership`.
+  - Servicios: `AccessGuard` (comprueba el dueño antes de leer o modificar nada), `AuthService`, `TokenService` y `PasswordService`.
+  - Middlewares: `authenticate` y `authRateLimit`. Además, `AuthController`, `auth.routes` y `types/express.d.ts` (`req.user`).
+  - Errores: `UnauthorizedError` (401) y `ForbiddenError` (403).
+- **Endpoints:** `POST /api/auth/register` (201 `{ token, user }`), `POST /api/auth/login` (200) y `GET /api/auth/me` (protegido). `/api/health` sigue siendo público; **todo lo demás exige sesión**.
+- Todos los servicios reciben el `userId` del token. Los listados filtran por usuario y el catálogo devuelve los ejercicios base más los propios del usuario.
+- **Variables nuevas:** `JWT_SECRET`, `ALLOW_REGISTRATION` (por defecto `true`) y `TRUST_PROXY` (por defecto 0). Están en `server/.env.example`. El `server/.env` local recibió un secreto aleatorio.
+
+### Frontend
+
+- `services/auth-token.ts` guarda el token. `http-client` añade `Authorization: Bearer` a cada petición y, si la API rechaza el token (401), **cierra la sesión en toda la app** y vacía la caché de React Query.
+- `AuthProvider` + `useAuth` (estado `checking | anonymous | authenticated | offline`). Al arrancar valida el token con `/auth/me`; si el servidor no responde, ofrece "Reintentar" en vez de echar al usuario.
+- **Rutas:**
+  - `<ProtectedRoute>` lleva a `/login` y recuerda la página pedida.
+  - `<PublicOnlyRoute>` devuelve a esa página tras iniciar sesión. Solo se siguen rutas internas, para evitar redirecciones abiertas.
+- **Pantallas** `/login` y `/register`: mínimas, validadas con los mismos esquemas Zod que la API y con mensajes en español. La cabecera muestra el nombre del usuario y **Salir**.
+- **Entrenamiento en curso:** si en el mismo dispositivo inicia sesión **otro** usuario, se descarta el borrador del anterior. Si es el mismo usuario (por ejemplo, tras caducar el token), se conserva.
+
+### Docker
+
+- `docker-compose.yml`:
+  - `JWT_SECRET: ${JWT_SECRET:?…}`: Compose **se niega a arrancar** sin él.
+  - `ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}` y `TRUST_PROXY: "1"`.
+- **Nuevos:**
+  - `.env.example` en la raíz (se sube).
+  - `.env` local con un secreto aleatorio (no se sube, ignorado por git y por `.dockerignore`).
+- **nginx:** se añade la Content-Security-Policy a la web.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` y `npm audit` | ✅ / 0 vulnerabilidades |
+| Migración v5 sobre una **copia** de los datos del usuario | ✅ Mismos datos, **los 2 vínculos al catálogo intactos**, 0 claves foráneas rotas, `integrity_check` correcto y 1 rutina sin dueño |
+| API (34 comprobaciones) | ✅ Rutas públicas y protegidas, tokens falsos y `alg: none`, validación, normalización del email, sin hash en las respuestas, 409, **la primera cuenta se queda con PPL y sus 2 sesiones**, **la segunda cuenta recibe 404 en las 17 operaciones sobre datos ajenos**, catálogo por usuario, `/me`, mismo error y mismo tiempo en el login, 429 en el 11.º fallo |
+| Registro cerrado (`ALLOW_REGISTRATION=false`) y reinicio | ✅ 403, el login funciona y no se duplica nada |
+| Interfaz con Edge vía CDP (11 flujos) | ✅ Redirección a `/login`, errores del registro, registro → PPL, recarga, salir, enlace directo → login → vuelta a la página, contraseña errónea, token manipulado → "sesión caducada", segundo usuario sin PPL ni borrador y 404 en la URL ajena |
+| Docker | ✅ Copia de seguridad del volumen → reconstrucción → v5 aplicada a los datos reales (intactos, esperando la primera cuenta), 401 sin token y CSP activa con la web funcionando |
+
+**Fallo real encontrado y corregido:** tras iniciar sesión desde un enlace directo, la app acababa en "/" en vez de en la página pedida. Competían dos redirecciones: la del formulario y la de la ruta pública. Con React Router v7 la navegación se aplica como transición, y ganaba "/". Ahora solo redirige `<PublicOnlyRoute>`.
+
+**No se ha registrado ninguna cuenta** ni en la base de datos de desarrollo ni en la de Docker: la primera cuenta, y con ella los datos actuales, es del usuario.

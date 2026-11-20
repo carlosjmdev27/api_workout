@@ -9,7 +9,9 @@ const SET_TYPE_CHECK = `'warmup', 'normal', 'topset', 'backoff', 'restpause', 'd
  * PRAGMA user_version; never edit an applied migration, append a new one.
  * Columns named `position` map to the domain field `order` (reserved word in SQL).
  */
-const MIGRATIONS: readonly string[] = [
+type Migration = string | { sql: string; disableForeignKeys: true };
+
+const MIGRATIONS: readonly Migration[] = [
   // v1 — flat model (Routine -> Exercise). Superseded by v2.
   `
   CREATE TABLE routines (
@@ -122,6 +124,49 @@ const MIGRATIONS: readonly string[] = [
   ALTER TABLE day_exercises ADD COLUMN catalog_exercise_id TEXT
     REFERENCES exercise_catalog(id) ON DELETE SET NULL;
   `,
+  // v5 — users and ownership. Existing rows keep user_id NULL ("unclaimed") until the
+  // first account is registered, which claims them (see the user repository).
+  // The catalog is rebuilt (official 12-step procedure, FKs off) to replace the global
+  // UNIQUE name by: base names unique, custom names unique per user.
+  {
+    disableForeignKeys: true,
+    sql: `
+  CREATE TABLE users (
+    id            TEXT PRIMARY KEY,
+    email         TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    name          TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+  );
+
+  ALTER TABLE routines ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
+  CREATE INDEX idx_routines_user ON routines (user_id, updated_at DESC);
+
+  ALTER TABLE workout_sessions ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
+  CREATE INDEX idx_sessions_user ON workout_sessions (user_id);
+
+  CREATE TABLE exercise_catalog_v5 (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    name_normalized TEXT NOT NULL,
+    muscle_group    TEXT NOT NULL CHECK (muscle_group IN
+                      ('Pecho', 'Espalda', 'Pierna', 'Hombro', 'Bíceps', 'Tríceps', 'Core', 'Cardio')),
+    equipment       TEXT CHECK (equipment IS NULL OR equipment IN
+                      ('Barra', 'Mancuernas', 'Polea', 'Máquina', 'Peso Corporal')),
+    is_custom       INTEGER NOT NULL DEFAULT 0 CHECK (is_custom IN (0, 1)),
+    user_id         TEXT REFERENCES users(id) ON DELETE CASCADE,
+    created_at      TEXT NOT NULL,
+    CHECK (is_custom = 1 OR user_id IS NULL)
+  );
+  INSERT INTO exercise_catalog_v5 (id, name, name_normalized, muscle_group, equipment, is_custom, user_id, created_at)
+    SELECT id, name, name_normalized, muscle_group, equipment, is_custom, NULL, created_at FROM exercise_catalog;
+  DROP TABLE exercise_catalog;
+  ALTER TABLE exercise_catalog_v5 RENAME TO exercise_catalog;
+  CREATE INDEX idx_exercise_catalog_muscle ON exercise_catalog (muscle_group);
+  CREATE UNIQUE INDEX ux_catalog_base_name ON exercise_catalog (name_normalized) WHERE is_custom = 0;
+  CREATE UNIQUE INDEX ux_catalog_custom_name ON exercise_catalog (user_id, name_normalized) WHERE is_custom = 1;
+  `,
+  },
 ];
 
 function getSchemaVersion(db: Database): number {
@@ -129,17 +174,32 @@ function getSchemaVersion(db: Database): number {
   return typeof version === 'number' ? version : 0;
 }
 
+/** Applies one migration and bumps user_version in the same transaction. */
+function applyMigration(db: Database, sql: string, targetVersion: number): void {
+  db.transaction(() => {
+    db.exec(sql);
+    const violations: unknown = db.pragma('foreign_key_check');
+    if (Array.isArray(violations) && violations.length > 0) throw new Error(`Migration v${targetVersion} breaks foreign keys`);
+    // PRAGMA does not accept bound parameters; targetVersion is an internal integer.
+    db.pragma(`user_version = ${targetVersion}`);
+  })();
+}
+
 export function runMigrations(db: Database): void {
   const currentVersion = getSchemaVersion(db);
 
-  MIGRATIONS.forEach((sql, index) => {
+  MIGRATIONS.forEach((migration, index) => {
     const targetVersion = index + 1;
     if (targetVersion <= currentVersion) return;
+    const { sql, disableForeignKeys } = typeof migration === 'string' ? { sql: migration, disableForeignKeys: false } : migration;
 
-    db.transaction(() => {
-      db.exec(sql);
-      // PRAGMA does not accept bound parameters; targetVersion is an internal integer.
-      db.pragma(`user_version = ${targetVersion}`);
-    })();
+    // Table rebuilds need FKs off (outside the transaction, as SQLite requires);
+    // otherwise dropping the old table would cascade into its children.
+    if (disableForeignKeys) db.pragma('foreign_keys = OFF');
+    try {
+      applyMigration(db, sql, targetVersion);
+    } finally {
+      if (disableForeignKeys) db.pragma('foreign_keys = ON');
+    }
   });
 }

@@ -1,41 +1,43 @@
 import type { RoutineDetail, RoutineInput, RoutineSummary, RoutineUpdate } from '@gym/shared';
 import type { RoutineRepository } from '../repositories/routine.repository.js';
+import type { AccessGuard } from './access.guard.js';
 import { routineNotFound } from './errors.js';
 
-/** Business logic for routines. Knows nothing about HTTP or SQL. */
+/** Business logic for routines. Knows nothing about HTTP or SQL. Every call is scoped to a user. */
 export class RoutineService {
   private readonly routines: RoutineRepository;
+  private readonly access: AccessGuard;
 
-  constructor(routines: RoutineRepository) {
+  constructor(routines: RoutineRepository, access: AccessGuard) {
     this.routines = routines;
+    this.access = access;
   }
 
-  list(): Promise<RoutineSummary[]> {
-    return this.routines.findAll();
+  list(userId: string): Promise<RoutineSummary[]> {
+    return this.routines.findAll(userId);
   }
 
-  async getById(id: string): Promise<RoutineDetail> {
+  async getById(userId: string, id: string): Promise<RoutineDetail> {
+    await this.access.assertRoutine(userId, id);
     const routine = await this.routines.findById(id);
     if (!routine) throw routineNotFound(id);
     return routine;
   }
 
-  create(input: RoutineInput): Promise<RoutineDetail> {
-    return this.routines.create(input);
+  create(userId: string, input: RoutineInput): Promise<RoutineDetail> {
+    return this.routines.create(userId, input);
   }
 
-  async update(id: string, input: RoutineUpdate): Promise<RoutineDetail> {
+  async update(userId: string, id: string, input: RoutineUpdate): Promise<RoutineDetail> {
+    await this.access.assertRoutine(userId, id);
     const updated = await this.routines.update(id, input);
     if (!updated) throw routineNotFound(id);
-    return this.getById(id);
+    return this.getById(userId, id);
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(userId: string, id: string): Promise<void> {
+    await this.access.assertRoutine(userId, id);
     const deleted = await this.routines.delete(id);
     if (!deleted) throw routineNotFound(id);
-  }
-
-  async assertExists(id: string): Promise<void> {
-    if (!(await this.routines.exists(id))) throw routineNotFound(id);
   }
 }
