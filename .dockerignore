@@ -1,0 +1,36 @@
+# Build context = repo root (npm workspaces: server and client need shared/ and the root lockfile).
+# Only sources and manifests go in; the images install and build everything themselves.
+
+# Dependencies and build output (rebuilt inside the image)
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+
+# Secrets and local config: never baked into an image
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local database: data lives in the Docker volume, never in the image
+server/database
+**/*.sqlite
+**/*.sqlite-*
+**/*.db
+
+# Repo, editor and docs
+.git
+.gitignore
+.gitattributes
+.vscode
+.idea
+.claude
+**/*.md
+**/*.log
+**/.DS_Store
+**/Thumbs.db
+coverage
+
+# Docker files themselves
+**/Dockerfile
+**/.dockerignore
+docker-compose.yml

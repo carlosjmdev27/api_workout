@@ -28,6 +28,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Actualización §10 de la spec (v5: sin e1RM, "Empezar entrenamiento" y vista compacta):** ✅ Completada (2026-11-20).
 
+**Actualización §11 de la spec (Docker: Dockerfiles, nginx y docker-compose con volumen persistente):** ✅ Completada (2026-11-20).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -820,6 +822,7 @@ El usuario añadió la sección 7 a la spec: jerarquía Rutina → Tabla → Eje
 - Por petición del usuario se eliminó de la base de datos real (`server/database/gym.sqlite`) su rutina de prueba **«PPL»**, que tenía 1 tabla, 1 ejercicio y ninguna sesión.
 - La API estaba apagada, así que se usó el propio repositorio de la app (`SqliteRoutineRepository.delete`) con las claves foráneas activas. Antes de borrar se comprobó que el id y el nombre coincidían.
 - Resultado: base de datos vacía, 0 filas en las 6 tablas.
+
 ---
 
 ## 2026-11-19 · Datos de demostración en la base de datos real
@@ -841,6 +844,7 @@ Por petición del usuario se simularon una rutina y entrenamientos para ver la a
   - **Altibajos intencionados:** estancamiento en la sentadilla la semana 4, una back-off de banca sin completar y 4 sesiones con notas.
   - **Esta semana no tiene sesiones**, para poder usar "Iniciar tabla" y ver la columna "Anterior" con los datos de la semana pasada.
 - **Para borrarla:** en la app, abrir la rutina → **Eliminar**. Se borran tablas, ejercicios e historial.
+
 ---
 
 ## 2026-11-19 · Eliminación de los datos de demostración
@@ -848,6 +852,7 @@ Por petición del usuario se simularon una rutina y entrenamientos para ver la a
 - Por petición del usuario se eliminó la rutina de ejemplo «Torso-Pierna 4 días», con sus 4 tablas y 24 sesiones (el usuario no había añadido sesiones propias). Se usó el repositorio de la app, comprobando antes el id y el nombre.
 - La base de datos real queda vacía: 0 filas en las 6 tablas.
 - Se suben a GitHub todos los commits locales pendientes.
+
 ---
 
 ## 2026-11-19 · Actualización §8 (v3): planificación vs. ejecución y ciclo de vida de la sesión
@@ -943,6 +948,7 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
 **Incidencias del test (no eran fallos de la app):**
 1. Se buscaba "70 kg × 10" en toda la página, pero aparece correctamente en la columna "Anterior". La comprobación se limitó a la sección de series.
 2. Una segunda ejecución igualaba la marca anterior, y **igualar no es récord**. El test ahora escribe las reps anteriores + 1.
+
 ---
 
 ## 2026-11-19 · Actualización §9 (v4): catálogo de ejercicios y autocompletado
@@ -1090,3 +1096,48 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
 
 - **Ajuste real:** la insignia de músculo usaba `inline-flex`, y su texto se leía partido en dos líneas ("Pecho / · Barra"). Ahora es `inline-block`.
 - **Durante la prueba se pararon los servidores de desarrollo del usuario** (3000/5173). No consta que fuera la limpieza de las pruebas, que solo cerró sus propios procesos, pero no se puede descartar. Basta con volver a lanzar `npm run dev`.
+
+---
+
+## 2026-11-20 · Actualización §11: contenerización con Docker
+
+- Antes de empezar se subió la v5 a GitHub (`ce44e7f`).
+
+### Archivos nuevos
+
+| Archivo | Contenido |
+|---------|-----------|
+| `server/Dockerfile` | Multi-etapa: `build` (compila `shared` y `server`), `prod-deps` (`npm ci --omit=dev` solo del workspace `server`) y `runtime` (`node:22-alpine`, usuario `node` sin privilegios, `HEALTHCHECK` contra `/api/health`). |
+| `client/Dockerfile` | Multi-etapa: compila con Vite (`VITE_API_URL=/api`) y sirve `dist/` con `nginx:1.28-alpine`. |
+| `client/nginx.conf` | Proxy `/api/` → `http://backend:3000`, fallback SPA (`try_files … /index.html`), `/assets/` en caché 1 año, `index.html` sin caché, gzip, `client_max_body_size 16k` y cabeceras de seguridad en lo estático. |
+| `docker-compose.yml` | Servicios `backend` y `frontend` en la red interna `gym-net`. Volumen **`gym-data`** → `/app/server/database`. Solo se publica el puerto `8080` (o `WEB_PORT`). `frontend` espera a que `backend` esté *healthy*. |
+| `.dockerignore` (raíz) | Excluye `node_modules`, `dist`, `.env`, **la base de datos local**, `.git` y los `.md`. |
+| `README.md` | Nuevo (no existía): qué es la app y cómo arrancarla con Docker y en desarrollo, más copia de seguridad e importación de datos. |
+
+### Decisiones (diferencias con la spec)
+
+| Spec | Implementación | Motivo |
+|------|----------------|--------|
+| Carpetas `backend/` y `frontend/` | `server/` y `client/` | Son las carpetas reales del proyecto desde la Fase 1. Los servicios de Compose sí se llaman `backend` y `frontend`. |
+| `.dockerignore` por servicio | **Uno solo en la raíz** | El contexto de build es la raíz: los dos servicios necesitan `shared/` y el `package-lock.json` común (npm workspaces). Docker solo lee el `.dockerignore` del contexto. |
+| `node:20-alpine` | **`node:22-alpine`** | El proyecto exige Node ≥ 22 (`engines`) y se desarrolla con Node 22. Node 20 llegó al fin de soporte en abril de 2026. |
+| Volumen `./backend/data` o nombrado | **Volumen nombrado** `gym-data` | En Windows, un bind mount con SQLite en modo WAL (que usa memoria compartida) no es fiable. Además evita que Docker y `npm run dev` abran el mismo archivo. |
+
+- **La base de datos de desarrollo** (`server/database/gym.sqlite`) **no se toca**. Docker empieza con su propia base de datos (vacía + catálogo). El README explica cómo importar la existente.
+- **`DATABASE_PATH`** en el contenedor: `./database/gym.sqlite`, relativo a `/app/server` y dentro del volumen.
+- **`CORS_ORIGIN`** = `http://localhost:8080`. Con nginx, web y API comparten origen, así que el navegador no necesita CORS; la variable se mantiene porque el esquema de entorno la exige.
+- **Parada limpia:** `init: true` y el `SIGTERM` ya gestionado por `server.ts` cierran SQLite al parar (verificado: parada inmediata y WAL volcado al archivo).
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `docker compose build` | ✅ Imágenes: backend 274 MB, frontend 93 MB. Ninguna contiene archivos `.sqlite`. |
+| Smoke test a través de nginx (15 comprobaciones) | ✅ Salud de la API, catálogo (120), SPA y enlaces profundos, caché de assets, cabeceras, 404 JSON, límite de cuerpo (413 en nginx > 16k y 413 en Express > 10kb), alta de datos y backend no accesible desde el host (`:3000`). |
+| **Persistencia** | ✅ Datos creados → `docker compose down` → `up -d --build --force-recreate` → los datos siguen y el catálogo no se duplica. |
+| Importar una base de datos existente (copia de prueba, con `-wal` pendiente) | ✅ Se lee, se puede escribir (permisos tras `chown`) y mantiene el catálogo. |
+| Interfaz en Edge vía nginx | ✅ Captura de una rutina abierta por enlace directo. |
+
+**Fallo encontrado y corregido:** las cabeceras de seguridad de nginx estaban a nivel de `server` y se **duplicaban** en `/api` con valores contradictorios respecto a helmet (`X-Frame-Options: SAMEORIGIN` y `DENY` a la vez). Ahora solo se añaden en las rutas estáticas.
+
+**Limpieza:** se borraron los contenedores, el volumen de pruebas y la imagen `alpine` usada para inspeccionar. Se conservan las dos imágenes construidas.

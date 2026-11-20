@@ -318,3 +318,26 @@ Para evitar latencia en el gimnasio y dependencia de servicios externos caídos,
      - Sustituir selectores largos de tipo de serie por **badges/selectores compactos** con abreviaturas claras y tooltip (ej. `TOP`, `BACK`, `RP`, `WARM`, `NORM`).
   3. **Botón `+ Añadir serie` integrado**:
      - Colocarlo como una fila sutil de baja altura en el pie de la tabla de series del ejercicio, evitando botones grandes con márgenes amplios entre tarjetas.
+
+11. Empezando en docker
+
+---
+
+## 🐳 Fase 8: Contenerización con Docker y Docker Compose
+
+### 1. Arquitectura de Contenedores (Ligera y Persistente)
+Empaquetar el frontend y el backend usando imágenes base ligeras (`alpine`) y volúmenes persistentes para no perder los datos de la base de datos local al reiniciar o reconstruir contenedores.
+
+- **Servicio `backend`**:
+  - Imagen base `node:20-alpine`.
+  - Expone el puerto interno de la API (ej. `3000` o `3001`).
+  - **Persistencia crítica**: Montar un volumen Docker (`./backend/data:/app/data` o volumen nombrado) apuntando al directorio donde reside el archivo de base de datos SQLite/JSON para garantizar que las rutinas y sesiones registradas nunca se borren al recrear el contenedor.
+- **Servicio `frontend`**:
+  - Build multi-etapa (*multi-stage build*): compila React con Vite en una etapa de Node y sirve los archivos estáticos resultantes con **`nginx:alpine`** (consumo mínimo de RAM, ~10-15 MB).
+  - Configura `nginx.conf` con proxy inverso (`/api` -> `http://backend:3000`) para evitar problemas de CORS y soporte para rutas SPA (`try_files $uri /index.html`).
+
+### 2. Archivos a Generar por Claude
+1. `backend/Dockerfile` y `backend/.dockerignore` (excluyendo `node_modules`, `.env`, etc.).
+2. `frontend/Dockerfile`, `frontend/nginx.conf` y `frontend/.dockerignore`.
+3. `docker-compose.yml` en la raíz del proyecto que levante ambos servicios en una red interna compartida.
+4. Actualizar `README.md` con los comandos básicos: `docker compose up -d --build` y `docker compose down`.

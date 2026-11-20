@@ -1,0 +1,46 @@
+# Production-like stack: docker compose up -d --build  ->  http://localhost:8080
+# (Development keeps using `npm run dev`; both can run at the same time.)
+name: gym-routines
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # Origin the browser uses (nginx). Requests are same-origin, this only sets the CORS header.
+      CORS_ORIGIN: http://localhost:${WEB_PORT:-8080}
+      # Relative to /app/server -> /app/server/database/gym.sqlite, inside the volume.
+      DATABASE_PATH: ./database/gym.sqlite
+    volumes:
+      # Persistent data: routines, sessions and catalog survive rebuilds and `down`.
+      - gym-data:/app/server/database
+    expose:
+      - "3000" # Internal network only: reachable through nginx, not from the host.
+    networks:
+      - gym-net
+    init: true
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      args:
+        VITE_API_URL: /api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - gym-net
+    restart: unless-stopped
+
+networks:
+  gym-net:
+
+volumes:
+  gym-data:
