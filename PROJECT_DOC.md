@@ -1250,3 +1250,17 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
 - **Desarrollo:** se arrancó la API un momento sobre `server/database/gym.sqlite`. Se aplicó la migración v5 (integridad correcta, 2 vínculos al catálogo intactos, 0 rutinas sin dueño) y se registró la cuenta. Después se paró la API.
 - Verificado en los dos entornos: la rutina "PPL" es visible y el login responde 200.
 - **La contraseña no está en este documento.** Solo está en `INSTRUCCIONESDEEJECUCION.md`, que es local y no se sube.
+
+---
+
+## 2026-11-20 · Nueva raíz del proyecto: `D:\VSCODE_RS\api_workout`
+
+- A petición del usuario, todo el proyecto (incluidos `.git`, `node_modules`, los `.env` y los `.md` locales) se movió de `D:\VSCODE_RS` a la carpeta, antes vacía, `D:\VSCODE_RS\api_workout`. Coincide con el nombre del repositorio de GitHub.
+- Al estar en el mismo disco fue un renombrado: no se copiaron datos.
+- **`npm install`:** los enlaces de los workspaces en `node_modules` (`@gym/shared`, `client`, `server`) son *junctions* de Windows con ruta absoluta. Se regeneraron para apuntar a la nueva ruta. 0 vulnerabilidades.
+- **Verificado desde la nueva raíz:**
+  - `git status` limpio y sincronizado con `origin/main`.
+  - `npm run check` correcto.
+  - Docker reconoce los mismos contenedores y el mismo volumen `gym-routines_gym-data`, porque Compose tiene el nombre fijo `gym-routines`. `up -d --build` funciona y la cuenta del usuario sigue viendo "PPL".
+- **El código versionado no contenía rutas absolutas.** Solo se actualizaron las 8 de `INSTRUCCIONESDEEJECUCION.md` (local). Las menciones a `D:\VSCODE_RS` en entradas antiguas de este documento se dejan como registro histórico.
+- A partir de ahora, abrir en VS Code la carpeta `D:\VSCODE_RS\api_workout` y lanzar los comandos desde ahí.
