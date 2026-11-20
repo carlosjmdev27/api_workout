@@ -1141,3 +1141,17 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
 **Fallo encontrado y corregido:** las cabeceras de seguridad de nginx estaban a nivel de `server` y se **duplicaban** en `/api` con valores contradictorios respecto a helmet (`X-Frame-Options: SAMEORIGIN` y `DENY` a la vez). Ahora solo se añaden en las rutas estáticas.
 
 **Limpieza:** se borraron los contenedores, el volumen de pruebas y la imagen `alpine` usada para inspeccionar. Se conservan las dos imágenes construidas.
+---
+
+## 2026-11-20 · Datos del usuario llevados a Docker
+
+- Se subió la configuración de Docker a GitHub (`18ab1a6`).
+- **Origen:** `server/database/gym.sqlite`, con un `-wal` pendiente porque la API de desarrollo no se cerró limpiamente.
+- **Procedimiento seguro:**
+  1. Copia de seguridad de los 3 archivos.
+  2. De una segunda copia se sacó una instantánea en un único archivo (`VACUUM INTO`, que incluye el WAL). Pasó `integrity_check`.
+  3. Se copió al volumen con `docker compose cp`, se quitaron los `-wal`/`-shm` del volumen y se aplicó `chown node:node`.
+- **Los archivos originales no se tocaron** (hash idéntico antes y después).
+- **Verificado por la API de Docker** (http://localhost:8080): rutina "PPL", 1 tabla, 3 ejercicios, 2 sesiones (8 series) y catálogo de 120.
+- A partir de aquí, **Docker y `npm run dev` tienen bases de datos separadas**; los cambios en una no aparecen en la otra.
+- El stack de Docker queda **en marcha** (`restart: unless-stopped`: vuelve a arrancar con Docker Desktop hasta que se haga `docker compose down`).

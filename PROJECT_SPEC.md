@@ -341,3 +341,62 @@ Empaquetar el frontend y el backend usando imágenes base ligeras (`alpine`) y v
 2. `frontend/Dockerfile`, `frontend/nginx.conf` y `frontend/.dockerignore`.
 3. `docker-compose.yml` en la raíz del proyecto que levante ambos servicios en una red interna compartida.
 4. Actualizar `README.md` con los comandos básicos: `docker compose up -d --build` y `docker compose down`.
+
+12. Nueva funcionalidad: loggin
+
+---
+
+## 🔐 Fase 9: Autenticación Segura, Multi-usuario y Protección de Rutas
+
+### 1. Arquitectura de Seguridad
+Para preparar la aplicación antes de exponerla fuera de la red local, cada rutina, tabla, ejercicio personalizado e historial pertenecerá exclusivamente al usuario autenticado.
+
+- **Almacenamiento de Contraseñas**: Nunca guardar contraseñas en texto plano. Hashear con **`bcrypt`** (mínimo 10-12 *salt rounds*).
+- **Gestión de Sesión (`JWT`)**:
+  - Generar un token JWT firmado con una clave secreta fuerte definida en `.env` (`JWT_SECRET`, mínimo 32 caracteres aleatorios).
+  - Expiración recomendada: `7d` (cómodo para uso personal en el gimnasio sin tener que loguearse cada día).
+  - Incluir `userId` en el payload del token; **nunca** confiar en un `userId` enviado en el cuerpo (`body`) de la petición por el cliente.
+- **Protección contra Fuerza Bruta y Abusos**:
+  - Añadir limitación de peticiones (*rate limiting* con `express-rate-limit`) en los endpoints `/api/auth/login` y `/api/auth/register` (ej. máx. 10 intentos cada 15 minutos por IP).
+  - Mensajes de error genéricos en login (`"Credenciales inválidas"`) para no revelar si un email existe o no en el sistema.
+
+### 2. Cambios en el Modelo de Datos (Migración Segura)
+1. **Nueva tabla/entidad `User`**:
+   - `id` (PK)
+   - `email` (string, único, indexado, normalizado en minúsculas)
+   - `password_hash` (string)
+   - `name` (string)
+   - `created_at` (DATETIME)
+2. **Aislamiento de Propiedad (`user_id`)**:
+   - Añadir clave foránea `user_id` en `Routine`, `WorkoutSessionLog` y en `ExerciseCatalog` (cuando `is_custom = true`).
+   - **Migración de datos existentes**: Si ya existen rutinas creadas antes de activar el login, asignarlas automáticamente al primer usuario que se registre (o crear un usuario inicial por defecto) para no dejar datos huérfanos.
+
+### 3. Tareas Técnicas para Claude
+
+#### Backend (Node.js / Express)
+1. **Dependencias**: Instalar `bcrypt` (o `bcryptjs` para evitar problemas de compilación nativa en contenedores `node:alpine`), `jsonwebtoken` y `express-rate-limit`.
+2. **Endpoints Públicos (`/api/auth`)**:
+   - `POST /api/auth/register`: Valida formato de email y contraseña segura (mínimo 8 caracteres), crea usuario con `password_hash` y devuelve `{ token, user }`. *(Opcional: añadir variable de entorno `ALLOW_REGISTRATION=true/false` para poder cerrar registros públicos una vez creada tu cuenta personal).*
+   - `POST /api/auth/login`: Verifica hash con `bcrypt.compare` y devuelve `{ token, user }`.
+   - `GET /api/auth/me` (protegido): Verifica el token actual y devuelve los datos básicos del usuario.
+3. **Middleware `authenticateToken`**:
+   - Extraer `Authorization: Bearer <token>`, verificar firma y adjuntar `req.user = { id: decoded.userId }`.
+   - Proteger **todas** las rutas de `/api/routines`, `/api/days`, `/api/sessions` y `/api/exercises`.
+4. **Filtrado estricto en Repositorios/Servicios**:
+   - Asegurar que `GET /api/routines` solo devuelva las rutinas donde `user_id === req.user.id`.
+   - Verificar propiedad antes de editar, borrar o registrar sesiones sobre cualquier `routineId` o `dayId` (devolver `403 Forbidden` o `404 Not Found` si pertenece a otro usuario).
+
+#### Frontend (React)
+1. **Estado Global de Autenticación (`AuthContext`)**:
+   - Gestionar `user`, `token`, `isAuthenticated`, `login()`, `register()` y `logout()`.
+   - Persistir el token de forma segura y validar sesión al arrancar la app mediante `/api/auth/me`.
+2. **Interceptor HTTP**:
+   - Inyectar automáticamente la cabecera `Authorization: Bearer <token>` en todas las llamadas a la API.
+   - Si el backend responde `401 Unauthorized` (token expirado o inválido), cerrar sesión automáticamente y redirigir a `/login`.
+3. **Vistas y Protección de Rutas**:
+   - Crear pantallas limpias y minimalistas de **Iniciar Sesión (`/login`)** y **Registro (`/register`)**.
+   - Envolver las rutas privadas de la aplicación en un componente `<ProtectedRoute>` para impedir el acceso sin sesión activa.
+   - Añadir botón discreto de **Cerrar Sesión** en la cabecera o menú de usuario.
+
+#### Docker & Variables de Entorno
+- Actualizar `.env.example` y `docker-compose.yml` añadiendo `JWT_SECRET` y `ALLOW_REGISTRATION=true` en el servicio `backend`.
