@@ -1264,3 +1264,11 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
   - Docker reconoce los mismos contenedores y el mismo volumen `gym-routines_gym-data`, porque Compose tiene el nombre fijo `gym-routines`. `up -d --build` funciona y la cuenta del usuario sigue viendo "PPL".
 - **El código versionado no contenía rutas absolutas.** Solo se actualizaron las 8 de `INSTRUCCIONESDEEJECUCION.md` (local). Las menciones a `D:\VSCODE_RS` en entradas antiguas de este documento se dejan como registro histórico.
 - A partir de ahora, abrir en VS Code la carpeta `D:\VSCODE_RS\api_workout` y lanzar los comandos desde ahí.
+
+---
+
+## 2026-11-20 · Docker: contenedores con imagen antigua tras `up -d --build`
+
+- **Hallazgo:** después de mover la raíz del proyecto, `docker compose up -d --build` reconstruyó las imágenes (había cambiado `package-lock.json`, solo metadatos de un paquete opcional de Tailwind, sin cambios de versión), pero **no recreó los contenedores**: seguían con las imágenes de la fase 9. Se detectó comparando el id de la imagen de cada contenedor con el de la imagen construida.
+- **Solución aplicada:** `docker compose up -d --force-recreate`. Los dos servicios quedan `healthy`, ya con la imagen actual, y la cuenta del usuario sigue viendo "PPL" (los datos están en el volumen).
+- **Documentado en `INSTRUCCIONESDEEJECUCION.md`** (local): para aplicar cambios del código se usa `docker compose up -d --build --force-recreate`, con un comando de PowerShell que comprueba que cada contenedor usa la imagen recién construida.
