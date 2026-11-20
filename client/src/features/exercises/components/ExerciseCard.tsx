@@ -1,8 +1,9 @@
-import type { JSX } from 'react';
+import { useId, useState, type JSX } from 'react';
 import { ArrowDown, ArrowUp, Pencil, Trash2 } from 'lucide-react';
-import type { DayExercise } from '@gym/shared';
-import { IconButton } from '../../../components/IconButton';
-import { useCatalogById } from '../../catalog/hooks';
+import { LIMITS, type DayExercise } from '@gym/shared';
+import { ActionMenu } from '../../../components/ActionMenu';
+import { NotePanel, NoteToggleButton } from '../../../components/NoteToggle';
+import { MuscleBadge } from '../../catalog/components/MuscleBadge';
 import { SetsTable } from './SetsTable';
 
 interface ExerciseCardProps {
@@ -14,8 +15,10 @@ interface ExerciseCardProps {
   onMoveDown: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onAddSet: () => void;
 }
 
+/** Compact exercise of a table: one-line header, collapsed notes, dense set rows. */
 export function ExerciseCard({
   exercise,
   isFirst,
@@ -25,36 +28,45 @@ export function ExerciseCard({
   onMoveDown,
   onEdit,
   onDelete,
+  onAddSet,
 }: ExerciseCardProps): JSX.Element {
-  const catalogById = useCatalogById();
-  const catalogEntry = exercise.catalogExerciseId ? catalogById.get(exercise.catalogExerciseId) : undefined;
+  const [notesOpen, setNotesOpen] = useState(false);
+  const notesId = useId();
+  const { name } = exercise;
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-700">
-          {exercise.order}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="break-words font-medium text-slate-900">{exercise.name}</h3>
-          {catalogEntry && (
-            <p className="text-xs text-slate-500">
-              {catalogEntry.muscleGroup}{catalogEntry.equipment ? ` · ${catalogEntry.equipment}` : ''}
-            </p>
-          )}
-          {exercise.notes && (
-            <p className="mt-0.5 whitespace-pre-line break-words text-sm text-slate-500">{exercise.notes}</p>
-          )}
+    <li className="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <h3 className="min-w-0 break-words font-medium text-slate-900">
+            <span className="mr-1.5 text-sm font-semibold text-indigo-600">{exercise.order}.</span>
+            {name}
+          </h3>
+          <MuscleBadge catalogExerciseId={exercise.catalogExerciseId} />
         </div>
-        <div className="grid shrink-0 grid-cols-2 content-start sm:flex sm:items-start">
-          <IconButton icon={ArrowUp} label={`Subir ${exercise.name}`} onClick={onMoveUp} disabled={isFirst || busy} />
-          <IconButton icon={ArrowDown} label={`Bajar ${exercise.name}`} onClick={onMoveDown} disabled={isLast || busy} />
-          <IconButton icon={Pencil} label={`Editar ${exercise.name}`} onClick={onEdit} />
-          <IconButton icon={Trash2} label={`Eliminar ${exercise.name}`} tone="danger" onClick={onDelete} />
+        <div className="flex shrink-0 items-center">
+          {exercise.notes && (
+            <NoteToggleButton open={notesOpen} controls={notesId} label={`Notas de ${name}`} onToggle={() => setNotesOpen((prev) => !prev)} />
+          )}
+          <ActionMenu
+            label={`Acciones de ${name}`}
+            actions={[
+              { label: 'Editar', icon: Pencil, onSelect: onEdit },
+              { label: 'Subir', icon: ArrowUp, onSelect: onMoveUp, disabled: isFirst || busy },
+              { label: 'Bajar', icon: ArrowDown, onSelect: onMoveDown, disabled: isLast || busy },
+              { label: 'Eliminar', icon: Trash2, onSelect: onDelete, tone: 'danger' },
+            ]}
+          />
         </div>
       </div>
-      <div className="mt-3">
-        <SetsTable sets={exercise.sets} />
+      {exercise.notes && <NotePanel id={notesId} open={notesOpen} text={exercise.notes} />}
+      <div className="mt-1">
+        <SetsTable
+          sets={exercise.sets}
+          addLabel={`Añadir serie a ${name}`}
+          addDisabled={busy || exercise.sets.length >= LIMITS.SETS_PER_EXERCISE_MAX}
+          onAddSet={onAddSet}
+        />
       </div>
     </li>
   );

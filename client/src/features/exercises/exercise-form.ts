@@ -61,6 +61,12 @@ export function exerciseToFormValues(exercise: DayExercise): ExerciseFormValues 
   };
 }
 
+/** Same exercise plus one set copying the last one ("+ Añadir serie" outside the editor). */
+export function withExtraSet(exercise: DayExercise): ValidationResult<DayExerciseInput> {
+  const values = exerciseToFormValues(exercise);
+  return validateExercise({ ...values, sets: [...values.sets, newSetRow(values.sets.at(-1))] });
+}
+
 /** Validates with the API schema. Errors are keyed like "sets.2.targetRepMax". */
 export function validateExercise(values: ExerciseFormValues): ValidationResult<DayExerciseInput> {
   return validateWith(dayExerciseInputSchema, {

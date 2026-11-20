@@ -48,10 +48,10 @@ function ActiveWorkout({ day, lastSession }: { day: WorkoutDayDetail; lastSessio
 
       <p className="mb-4 text-sm text-slate-500">
         {session.resumed ? 'Entrenamiento reanudado: el cronómetro sigue desde que empezaste. ' : ''}
-        {lastSession ? 'Debajo de cada serie tienes lo que hiciste la última vez.' : 'Primera sesión de esta tabla.'}
+        {lastSession ? 'La columna «Anterior» muestra lo que hiciste la última vez.' : 'Primera sesión de esta tabla.'}
       </p>
 
-      <ol className="space-y-4">
+      <ol className="space-y-3">
         {session.groups.map((group) => <WorkoutExerciseCard key={group.exercise.id} group={group} session={session} />)}
       </ol>
 

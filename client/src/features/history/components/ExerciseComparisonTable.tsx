@@ -7,7 +7,7 @@ import type { BestSet } from '../stats';
 const setText = (set: BestSet | null): string =>
   set ? `${set.weight === null ? 'sin peso' : formatWeight(set.weight)} × ${set.reps}` : '—';
 
-/** Best set of each exercise today vs the previous session, with e1RM change and records. */
+/** Best set of each exercise today vs the previous session: real weight and reps only. */
 export function ExerciseComparisonTable({ rows }: { rows: ExerciseComparison[] }): JSX.Element {
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -18,8 +18,8 @@ export function ExerciseComparisonTable({ rows }: { rows: ExerciseComparison[] }
             <th scope="col" className="py-2 font-medium">Ejercicio</th>
             <th scope="col" className="py-2 font-medium">Mejor serie hoy</th>
             <th scope="col" className="py-2 font-medium">Anterior</th>
-            <th scope="col" className="py-2 text-right font-medium">e1RM</th>
-            <th scope="col" className="py-2 text-right font-medium">Δ e1RM</th>
+            <th scope="col" className="py-2 text-right font-medium">Δ peso máx.</th>
+            <th scope="col" className="py-2 text-right font-medium">Reps totales</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 tabular-nums">
@@ -34,10 +34,13 @@ export function ExerciseComparisonTable({ rows }: { rows: ExerciseComparison[] }
                   </span>
                 )}
               </th>
-              <td className="py-2">{setText(row.best)}</td>
+              <td className="py-2 font-semibold">{setText(row.best)}</td>
               <td className="py-2 text-slate-500">{setText(row.previousBest)}</td>
-              <td className="py-2 text-right font-semibold">{row.best?.e1rm == null ? '—' : formatWeight(row.best.e1rm)}</td>
-              <td className="py-2 text-right text-slate-600">{row.delta === null ? '—' : signedDelta(row.delta, 'kg')}</td>
+              <td className="py-2 text-right text-slate-600">{row.weightDelta === null ? '—' : signedDelta(row.weightDelta, 'kg')}</td>
+              <td className="py-2 text-right">
+                {row.totalReps}
+                {row.repsDelta !== null && <span className="ml-1 text-xs text-slate-500">({signedDelta(row.repsDelta)})</span>}
+              </td>
             </tr>
           ))}
         </tbody>

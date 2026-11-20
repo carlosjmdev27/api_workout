@@ -1,5 +1,5 @@
-import type { WorkoutSession } from '@gym/shared';
-import { bestSet, exerciseKeyOf, sessionTotals, type BestSet, type SessionTotals } from './stats';
+import type { LoggedSet, WorkoutSession } from '@gym/shared';
+import { bestSet, exerciseKeyOf, isBetterSet, sessionTotals, type BestSet, type SessionTotals } from './stats';
 
 /** The session of the same day completed right before `session` (history is newest first). */
 export function previousSessionOf(session: WorkoutSession, history: WorkoutSession[]): WorkoutSession | undefined {
@@ -21,11 +21,18 @@ export interface ExerciseComparison {
   name: string;
   best: BestSet | null;
   previousBest: BestSet | null;
-  /** e1RM difference vs the previous session (kg), when both exist. */
-  delta: number | null;
-  /** Best e1RM ever for this exercise (needs at least one earlier session with data). */
+  /** Heaviest weight today minus the previous session's (kg), when both have weight. */
+  weightDelta: number | null;
+  /** Completed reps of this exercise today. */
+  totalReps: number;
+  /** Reps today minus the previous session's, when it also had this exercise. */
+  repsDelta: number | null;
+  /** Today's best set beats every earlier session (more weight, or same weight and more reps). */
   isRecord: boolean;
 }
+
+const repsOf = (sets: LoggedSet[]): number =>
+  sets.reduce((sum, set) => sum + (set.completed ? (set.actualReps ?? 0) : 0), 0);
 
 /** Per-exercise progress of `session` vs the previous one and vs all earlier sessions. */
 export function compareExercises(session: WorkoutSession, history: WorkoutSession[]): ExerciseComparison[] {
@@ -35,21 +42,24 @@ export function compareExercises(session: WorkoutSession, history: WorkoutSessio
   const keys = [...new Map(session.sets.map((set) => [exerciseKeyOf(set), set.exerciseName])).entries()];
 
   return keys.map(([key, name]) => {
-    const setsOf = (s: WorkoutSession) => s.sets.filter((set) => exerciseKeyOf(set) === key);
+    const setsOf = (s: WorkoutSession): LoggedSet[] => s.sets.filter((set) => exerciseKeyOf(set) === key);
     const best = bestSet(setsOf(session));
-    const previousBest = previous ? bestSet(setsOf(previous)) : null;
-    const earlierBestE1rm = Math.max(-1, ...earlier.map((s) => bestSet(setsOf(s))?.e1rm ?? -1));
-    const delta = best?.e1rm != null && previousBest?.e1rm != null
-      ? Math.round((best.e1rm - previousBest.e1rm) * 10) / 10
-      : null;
+    const previousSets = previous ? setsOf(previous) : [];
+    const previousBest = bestSet(previousSets);
+    const earlierBests = earlier.flatMap((s) => bestSet(setsOf(s)) ?? []);
+    const totalReps = repsOf(setsOf(session));
 
     return {
       key,
       name,
       best,
       previousBest,
-      delta,
-      isRecord: best?.e1rm != null && earlierBestE1rm >= 0 && best.e1rm > earlierBestE1rm,
+      weightDelta: best?.weight != null && previousBest?.weight != null
+        ? Math.round((best.weight - previousBest.weight) * 10) / 10
+        : null,
+      totalReps,
+      repsDelta: previousSets.length > 0 ? totalReps - repsOf(previousSets) : null,
+      isRecord: best !== null && earlierBests.length > 0 && earlierBests.every((other) => isBetterSet(best, other)),
     };
   });
 }

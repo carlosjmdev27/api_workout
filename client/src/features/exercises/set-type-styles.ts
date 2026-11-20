@@ -9,6 +9,16 @@ export const SET_TYPE_LABELS: Record<SetType, string> = {
   dropset: 'Drop set',
 };
 
+/** Short labels for dense rows (the full label goes in the tooltip). */
+export const SET_TYPE_SHORT: Record<SetType, string> = {
+  warmup: 'WARM',
+  normal: 'NORM',
+  topset: 'TOP',
+  backoff: 'BACK',
+  restpause: 'RP',
+  dropset: 'DROP',
+};
+
 /** Subtle colour per set type (full class strings so Tailwind can detect them). */
 export const SET_TYPE_STYLES: Record<SetType, string> = {
   warmup: 'bg-sky-50 text-sky-700 ring-sky-200',

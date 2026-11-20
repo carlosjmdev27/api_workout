@@ -1,21 +1,21 @@
 import { useId, useState, type JSX } from 'react';
 import type { WorkoutSession } from '@gym/shared';
-import { formatNumber, formatShortDate, formatWeight } from '../../../utils/format';
+import { formatShortDate, formatWeight, signedDelta } from '../../../utils/format';
 import { exerciseOptions, exerciseProgress, type ProgressPoint } from '../stats';
 import { ProgressChart, type ChartPoint } from './ProgressChart';
 
 const bestSetText = (p: ProgressPoint): string =>
   `${p.bestWeight === null ? 'sin peso' : formatWeight(p.bestWeight)} × ${p.bestReps}`;
 
+/** Change of the heaviest weight vs the previous session ("—" when either has no weight). */
 function delta(points: ProgressPoint[], index: number): string {
-  const current = points[index]?.e1rm;
-  const previous = points[index - 1]?.e1rm;
+  const current = points[index]?.bestWeight;
+  const previous = points[index - 1]?.bestWeight;
   if (current === null || current === undefined || previous === null || previous === undefined) return '—';
-  const diff = Math.round((current - previous) * 10) / 10;
-  return diff === 0 ? '=' : `${diff > 0 ? '+' : '−'}${formatNumber(Math.abs(diff))}`;
+  return signedDelta(current - previous);
 }
 
-/** Per-exercise progressive overload: e1RM chart + chronological table (the table view). */
+/** Per-exercise progressive overload: max-weight chart + chronological table (the table view). */
 export function ExerciseProgress({ sessions }: { sessions: WorkoutSession[] }): JSX.Element {
   const options = exerciseOptions(sessions);
   const [selected, setSelected] = useState(options[0]?.key ?? '');
@@ -24,7 +24,7 @@ export function ExerciseProgress({ sessions }: { sessions: WorkoutSession[] }): 
   const name = options.find((o) => o.key === key)?.name ?? '';
   const points = exerciseProgress(sessions, key);
   const chartPoints: ChartPoint[] = points.flatMap((p) =>
-    p.e1rm === null ? [] : [{ id: p.sessionId, date: p.date, value: p.e1rm, detail: `mejor serie ${bestSetText(p)}` }],
+    p.bestWeight === null ? [] : [{ id: p.sessionId, date: p.date, value: p.bestWeight, detail: `mejor serie ${bestSetText(p)}` }],
   );
 
   return (
@@ -40,11 +40,11 @@ export function ExerciseProgress({ sessions }: { sessions: WorkoutSession[] }): 
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-medium text-slate-700">e1RM estimado de {name} (kg, fórmula de Epley)</h3>
+        <h3 className="mb-2 text-sm font-medium text-slate-700">Peso máximo de {name} por sesión (kg)</h3>
         {chartPoints.length > 0 ? (
-          <ProgressChart points={chartPoints} unit="kg" label={`e1RM estimado de ${name} por sesión`} />
+          <ProgressChart points={chartPoints} unit="kg" label={`Peso máximo de ${name} por sesión`} />
         ) : (
-          <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">Sin series con peso y repeticiones para estimar el e1RM.</p>
+          <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">Este ejercicio no tiene series con peso: sigue su progresión con las reps de la tabla.</p>
         )}
       </div>
 
@@ -55,8 +55,7 @@ export function ExerciseProgress({ sessions }: { sessions: WorkoutSession[] }): 
             <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
               <th scope="col" className="py-2 font-medium">Fecha</th>
               <th scope="col" className="py-2 font-medium">Mejor serie</th>
-              <th scope="col" className="py-2 text-right font-medium">e1RM</th>
-              <th scope="col" className="py-2 text-right font-medium">Δ e1RM</th>
+              <th scope="col" className="py-2 text-right font-medium">Δ peso máx.</th>
               <th scope="col" className="py-2 text-right font-medium">Reps</th>
               <th scope="col" className="py-2 text-right font-medium">Peso movido</th>
             </tr>
@@ -67,8 +66,7 @@ export function ExerciseProgress({ sessions }: { sessions: WorkoutSession[] }): 
               return (
                 <tr key={p.sessionId}>
                   <td className="py-2 text-slate-600">{formatShortDate(p.date)}</td>
-                  <td className="py-2">{bestSetText(p)}</td>
-                  <td className="py-2 text-right font-semibold">{p.e1rm === null ? '—' : formatWeight(p.e1rm)}</td>
+                  <td className="py-2 font-semibold">{bestSetText(p)}</td>
                   <td className="py-2 text-right text-slate-600">{delta(points, index)}</td>
                   <td className="py-2 text-right">{p.totalReps}</td>
                   <td className="py-2 text-right">{formatWeight(p.volume)}</td>

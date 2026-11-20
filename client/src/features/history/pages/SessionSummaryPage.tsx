@@ -24,7 +24,7 @@ function Summary({ session, history }: { session: WorkoutSessionDetail; history:
       <PageHeader title={`Resumen · ${session.dayName}`} description={`${session.routineName} · ${formatDateTime(session.completedAt)}`}>
         <p className="pt-1 text-sm text-slate-500">
           {previous ? `Comparado con tu sesión del ${formatDateTime(previous.completedAt)}.` : 'Primera sesión registrada de esta tabla.'}
-          {records > 0 && ` ${records === 1 ? 'Has batido 1 récord' : `Has batido ${records} récords`} de e1RM.`}
+          {records > 0 && ` ${records === 1 ? 'Has batido 1 récord' : `Has batido ${records} récords`} de peso (o de reps con el mismo peso).`}
         </p>
       </PageHeader>
 

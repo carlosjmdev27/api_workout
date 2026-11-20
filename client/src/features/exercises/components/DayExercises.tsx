@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { EmptyState } from '../../../components/StatusViews';
 import { getErrorMessage } from '../../../utils/errors';
 import { useCreateExercise, useDeleteExercise, useReorderExercises, useUpdateExercise } from '../hooks';
+import { withExtraSet } from '../exercise-form';
 import { ExerciseCard } from './ExerciseCard';
 import { ExerciseEditorDialog } from './ExerciseEditorDialog';
 
@@ -26,6 +27,8 @@ export function DayExercises({ routineId, dayId, exercises }: DayExercisesProps)
   const updateMutation = useUpdateExercise(routineId);
   const deleteMutation = useDeleteExercise(routineId);
   const reorderMutation = useReorderExercises(routineId, dayId);
+  const addSetMutation = useUpdateExercise(routineId); // Separate from the editor's mutation state.
+  const busy = reorderMutation.isPending || addSetMutation.isPending;
   const isEdit = editor?.mode === 'edit';
   const limitReached = exercises.length >= LIMITS.EXERCISES_PER_DAY_MAX;
 
@@ -48,26 +51,33 @@ export function DayExercises({ routineId, dayId, exercises }: DayExercisesProps)
     reorderMutation.mutate(ids);
   };
 
+  const handleAddSet = (exercise: DayExercise): void => {
+    const result = withExtraSet(exercise);
+    if (result.ok) addSetMutation.mutate({ exerciseId: exercise.id, input: result.data });
+  };
+
   const closeDelete = (): void => {
     deleteMutation.reset();
     setToDelete(null);
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {reorderMutation.isError && <Alert message={getErrorMessage(reorderMutation.error)} />}
+      {addSetMutation.isError && <Alert message={getErrorMessage(addSetMutation.error)} />}
 
       {exercises.length === 0 ? (
         <EmptyState icon={ListChecks} title="Tabla sin ejercicios" description="Añade el primer ejercicio y configura sus series." />
       ) : (
-        <ol className="space-y-3">
+        <ol className="space-y-2">
           {exercises.map((exercise, index) => (
             <ExerciseCard
               key={exercise.id}
               exercise={exercise}
               isFirst={index === 0}
               isLast={index === exercises.length - 1}
-              busy={reorderMutation.isPending}
+              busy={busy}
+              onAddSet={() => handleAddSet(exercise)}
               onMoveUp={() => handleMove(index, -1)}
               onMoveDown={() => handleMove(index, 1)}
               onEdit={() => openEditor({ mode: 'edit', exercise })}

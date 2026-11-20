@@ -17,7 +17,7 @@ function HistoryContent({ day, sessions }: { day: WorkoutDayDetail; sessions: Wo
   const deleteMutation = useDeleteSession(day.id);
   const [toDelete, setToDelete] = useState<WorkoutSession | null>(null);
   const startAction = day.exercises.length > 0 && (
-    <LinkButton to={activeWorkoutPath(day.id)} icon={Play} size="sm">Iniciar tabla</LinkButton>
+    <LinkButton to={activeWorkoutPath(day.id)} icon={Play} size="sm">Empezar entrenamiento</LinkButton>
   );
 
   return (
@@ -25,7 +25,7 @@ function HistoryContent({ day, sessions }: { day: WorkoutDayDetail; sessions: Wo
       <PageHeader title={`Historial · ${day.name}`} description={day.routineName} backTo={`/routines/${day.routineId}?day=${day.id}`} backLabel="Volver a la rutina" actions={startAction} />
 
       {sessions.length === 0 ? (
-        <EmptyState icon={History} title="Aún no hay entrenamientos registrados" description="Inicia esta tabla y guarda la sesión para empezar a ver tu progresión." action={startAction} />
+        <EmptyState icon={History} title="Aún no hay entrenamientos registrados" description="Empieza un entrenamiento con esta tabla y termínalo para ver aquí tu progresión." action={startAction} />
       ) : (
         <>
           <ExerciseProgress sessions={sessions} />

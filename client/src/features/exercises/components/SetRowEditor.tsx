@@ -1,10 +1,20 @@
-import { useId, type JSX } from 'react';
+import type { JSX } from 'react';
 import { Copy, X } from 'lucide-react';
 import type { SetType } from '@gym/shared';
 import { IconButton } from '../../../components/IconButton';
 import type { FieldErrors } from '../../../utils/validation';
 import type { SetNumberField, SetRowValues } from '../exercise-form';
 import { SetTypeSelect } from './SetTypeSelect';
+
+/** Shared by the header and the rows so the columns line up. */
+export const SET_EDITOR_GRID = 'grid grid-cols-[1.25rem_4.5rem_repeat(4,minmax(0,1fr))_3.5rem] items-center gap-1';
+
+const FIELD_NAMES: Record<SetNumberField, string> = {
+  targetWeight: 'Peso',
+  targetRepMin: 'Reps mín',
+  targetRepMax: 'Reps máx',
+  targetRir: 'RIR',
+};
 
 interface NumberCellProps {
   label: string;
@@ -15,32 +25,21 @@ interface NumberCellProps {
   onChange: (value: string) => void;
 }
 
-/** Compact numeric input with a tiny visible label and inline error. */
+/** 32px numeric input; the column header is its visual label, `label` its accessible one. */
 function NumberCell({ label, value, error, placeholder, decimal, onChange }: NumberCellProps): JSX.Element {
-  const id = useId();
   return (
-    <div className="min-w-0">
-      <label htmlFor={id} className="block text-[11px] font-medium text-slate-500">
-        {label}
-      </label>
-      <input
-        id={id}
-        value={value}
-        inputMode={decimal ? 'decimal' : 'numeric'}
-        placeholder={placeholder}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        onChange={(event) => onChange(event.target.value)}
-        className={`h-9 w-full rounded-lg border bg-white px-2 text-center text-sm shadow-sm focus:outline-2 ${
-          error ? 'border-red-400 focus:outline-red-500' : 'border-slate-300 focus:outline-indigo-600'
-        }`}
-      />
-      {error && (
-        <p id={`${id}-error`} className="mt-0.5 text-[11px] leading-tight text-red-600">
-          {error}
-        </p>
-      )}
-    </div>
+    <input
+      aria-label={label}
+      value={value}
+      inputMode={decimal ? 'decimal' : 'numeric'}
+      placeholder={placeholder}
+      aria-invalid={error ? true : undefined}
+      title={error}
+      onChange={(event) => onChange(event.target.value)}
+      className={`h-8 w-full min-w-0 rounded-md border bg-white px-1 text-center text-sm focus:outline-2 ${
+        error ? 'border-red-400 focus:outline-red-500' : 'border-slate-300 focus:outline-indigo-600'
+      }`}
+    />
   );
 }
 
@@ -69,27 +68,37 @@ export function SetRowEditor({
 }: SetRowEditorProps): JSX.Element {
   const number = index + 1;
   const error = (field: SetNumberField): string | undefined => errors[`sets.${index}.${field}`];
+  const rowErrors = (Object.keys(FIELD_NAMES) as SetNumberField[]).flatMap((field) => {
+    const message = error(field);
+    return message ? [`${FIELD_NAMES[field]}: ${message}`] : [];
+  });
+  const cell = (field: SetNumberField, extra: Partial<NumberCellProps> = {}): JSX.Element => (
+    <NumberCell
+      label={`${FIELD_NAMES[field]} de la serie ${number}`}
+      value={row[field]}
+      error={error(field)}
+      onChange={(value) => onValueChange(field, value)}
+      {...extra}
+    />
+  );
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-slate-50/60 p-2.5">
-      <div className="flex flex-wrap items-end gap-2 sm:flex-nowrap">
-        <span className="flex h-9 w-6 shrink-0 items-center justify-center text-sm font-semibold text-slate-500">
-          {number}
-        </span>
-        <div className="min-w-0 flex-1 sm:w-36 sm:flex-none">
-          <SetTypeSelect value={row.setType} label={`Tipo de la serie ${number}`} onChange={onTypeChange} />
-        </div>
-        <div className="order-last grid w-full grid-cols-4 gap-2 sm:order-none sm:w-auto sm:flex-1">
-          <NumberCell label="Peso kg" decimal value={row.targetWeight} placeholder="—" error={error('targetWeight')} onChange={(v) => onValueChange('targetWeight', v)} />
-          <NumberCell label="Reps mín" value={row.targetRepMin} error={error('targetRepMin')} onChange={(v) => onValueChange('targetRepMin', v)} />
-          <NumberCell label="Reps máx" value={row.targetRepMax} error={error('targetRepMax')} onChange={(v) => onValueChange('targetRepMax', v)} />
-          <NumberCell label="RIR" value={row.targetRir} placeholder="—" error={error('targetRir')} onChange={(v) => onValueChange('targetRir', v)} />
-        </div>
-        <div className="flex shrink-0">
-          <IconButton icon={Copy} label={`Duplicar serie ${number}`} onClick={onDuplicate} disabled={!canDuplicate} />
-          <IconButton icon={X} tone="danger" label={`Quitar serie ${number}`} onClick={onRemove} disabled={!canRemove} />
+    <li className="py-0.5">
+      <div className={SET_EDITOR_GRID}>
+        <span className="text-center text-sm font-semibold text-slate-500">{number}</span>
+        <SetTypeSelect value={row.setType} label={`Tipo de la serie ${number}`} compact onChange={onTypeChange} />
+        {cell('targetWeight', { decimal: true, placeholder: '—', label: `Peso de la serie ${number} (kg)` })}
+        {cell('targetRepMin')}
+        {cell('targetRepMax')}
+        {cell('targetRir', { placeholder: '—' })}
+        <div className="flex">
+          <IconButton icon={Copy} label={`Duplicar serie ${number}`} onClick={onDuplicate} disabled={!canDuplicate} className="p-1.5" />
+          <IconButton icon={X} tone="danger" label={`Quitar serie ${number}`} onClick={onRemove} disabled={!canRemove} className="p-1.5" />
         </div>
       </div>
+      {rowErrors.length > 0 && (
+        <p className="mt-0.5 pl-6 text-[11px] leading-tight text-red-600">Serie {number} · {rowErrors.join(' · ')}</p>
+      )}
     </li>
   );
 }

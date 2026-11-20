@@ -1,4 +1,4 @@
-import { estimateOneRepMax, type LoggedSet, type WorkoutSession } from '@gym/shared';
+import type { LoggedSet, WorkoutSession } from '@gym/shared';
 
 /** A set counts for stats when it was completed and has reps. */
 const isDone = (set: LoggedSet): boolean => set.completed && set.actualReps !== null;
@@ -44,21 +44,22 @@ export function exerciseOptions(sessions: WorkoutSession[]): ExerciseOption[] {
 export interface BestSet {
   weight: number | null;
   reps: number;
-  e1rm: number | null;
 }
 
-/** Best completed set: highest e1RM (ties -> heavier). null if none qualifies. */
+/**
+ * Real data only: more weight wins; with the same weight, more reps.
+ * Sets without weight (bodyweight) count as 0 kg, so they compare by reps.
+ */
+export function isBetterSet(candidate: BestSet, other: BestSet): boolean {
+  const [a, b] = [candidate.weight ?? 0, other.weight ?? 0];
+  return a > b || (a === b && candidate.reps > other.reps);
+}
+
+/** Best completed set (see `isBetterSet`). null if none qualifies. */
 export function bestSet(sets: LoggedSet[]): BestSet | null {
-  const scored = sets
-    .filter(isDone)
-    .map((set) => ({ weight: set.actualWeight, reps: set.actualReps ?? 0, e1rm: estimateOneRepMax(set.actualWeight, set.actualReps) }));
-  if (scored.length === 0) return null;
-  return scored.reduce((top, current) =>
-    (current.e1rm ?? -1) > (top.e1rm ?? -1) ||
-    ((current.e1rm ?? -1) === (top.e1rm ?? -1) && (current.weight ?? 0) > (top.weight ?? 0))
-      ? current
-      : top,
-  );
+  const done = sets.filter(isDone).map((set) => ({ weight: set.actualWeight, reps: set.actualReps ?? 0 }));
+  if (done.length === 0) return null;
+  return done.reduce((top, current) => (isBetterSet(current, top) ? current : top));
 }
 
 export interface ProgressPoint {
@@ -66,7 +67,6 @@ export interface ProgressPoint {
   date: string;
   bestWeight: number | null;
   bestReps: number;
-  e1rm: number | null;
   totalReps: number;
   volume: number;
 }
@@ -83,7 +83,6 @@ export function exerciseProgress(sessions: WorkoutSession[], key: string): Progr
       date: session.completedAt,
       bestWeight: best.weight,
       bestReps: best.reps,
-      e1rm: best.e1rm,
       totalReps: sets.reduce((sum, set) => sum + (set.actualReps ?? 0), 0),
       volume: sets.reduce((sum, set) => sum + (set.actualWeight ?? 0) * (set.actualReps ?? 0), 0),
     }];

@@ -1,7 +1,6 @@
 // Single source of truth for the API contract (PROJECT_DOC pending #1, resolved).
 export { LIMITS } from './limits.js';
 export { SET_TYPES, isSetType, type SetType } from './set-types.js';
-export { estimateOneRepMax } from './progression.js';
 export {
   EQUIPMENT,
   MUSCLE_GROUPS,

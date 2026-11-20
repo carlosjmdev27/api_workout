@@ -51,7 +51,7 @@ export function DayPanel({ routineId, day, panelId, isFirst, isLast, moving, onM
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {day.exercises.length > 0 && (
-              <LinkButton to={activeWorkoutPath(day.id)} icon={Play} size="sm">Iniciar tabla</LinkButton>
+              <LinkButton to={activeWorkoutPath(day.id)} icon={Play} size="sm">Empezar entrenamiento</LinkButton>
             )}
             <LinkButton to={`/days/${day.id}/history`} icon={History} size="sm" variant="secondary">Historial</LinkButton>
           </div>

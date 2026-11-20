@@ -20,7 +20,7 @@ interface ProgressChartProps {
 const HEIGHT = 220;
 const M = { top: 20, right: 64, bottom: 28, left: 44 };
 
-/** Single-series line chart: e1RM (or any metric) over time, with crosshair + keyboard. */
+/** Single-series line chart: max weight (or any metric) over time, with crosshair + keyboard. */
 export function ProgressChart({ points, label, unit }: ProgressChartProps): JSX.Element {
   const [ref, width] = useElementWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);

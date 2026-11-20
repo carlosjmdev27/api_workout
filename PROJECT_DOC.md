@@ -26,6 +26,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 **Actualización §8 de la spec (v3: ciclo de vida de la sesión):** ✅ Completada (2026-11-19).
 **Actualización §9 de la spec (v4: catálogo de ejercicios y autocompletado):** ✅ Completada (2026-11-19).
 
+**Actualización §10 de la spec (v5: sin e1RM, "Empezar entrenamiento" y vista compacta):** ✅ Completada (2026-11-20).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -38,6 +40,7 @@ Revisar esta lista al empezar cada tarea.
 | 5 | **Privacidad de los `.md` de la raíz** (detalle abajo). Decisión aplazada por el usuario el 2026-11-19. | Media: decidir antes de añadir información sensible a la documentación | Fase 4 v2 |
 | 6 | **Gestionar los ejercicios propios del catálogo** (renombrar, cambiar el grupo muscular, borrar). Hoy un ejercicio mal clasificado queda así para siempre. | Media | v4 |
 | 7 | **Progresión por ejercicio entre tablas** usando `catalog_exercise_id` (p. ej. "Press de banca" en Torso A y Torso B como un mismo ejercicio). El vínculo ya existe; falta la vista. | Baja (mejora) | v4 |
+| 8 | **Dividir el bundle del cliente** (`import()` por página). Desde la v5 Vite avisa de que el JS supera los 500 kB minificados (505 kB, 153 kB gzip). No afecta en local. | Baja | v5 |
 | 4 | Avisos de `picomatch` (GHSA-fc5q-39xc-vjpf) en dependencias de desarrollo. El 2026-11-19 `npm audit` ya no los marca: **0 vulnerabilidades**, aunque seguimos en `picomatch@4.0.7`. No hubo cambio por nuestra parte; lo más probable es que se revisara el aviso. Vigilar en cada auditoría. | Baja | Fase 1 |
 
 **Detalle del pendiente #5: privacidad de `PROJECT_SPEC.md`, `PROJECT_DOC.md` e `INSTRUCCIONESDEEJECUCION.md`**
@@ -1029,3 +1032,61 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
 - **Lo que reveló el test:** el filtro "Bíceps" seguía puesto de una búsqueda anterior ("curl"), y con **un solo clic** se creó "Remo Kroc" como ejercicio de **bíceps**. Queda en el catálogo para siempre, porque no hay forma de editarlo (nuevo pendiente #6).
 - **Corrección:** el grupo muscular **siempre se elige a mano** al crear. Verificado: el primer clic sin grupo muestra "Elige el grupo muscular".
 - El ejercicio mal creado solo existía en la base de datos temporal de pruebas.
+
+---
+
+## 2026-11-20 · Actualización §10 (v5): sin e1RM, "Empezar entrenamiento" y vista compacta
+
+- Antes de empezar se subió la v4 a GitHub (`da7d4f6`).
+
+### 1. Eliminación del e1RM
+
+- Se borra `estimateOneRepMax` (y `shared/src/progression.ts`). Ya no queda ningún cálculo, columna ni gráfica de e1RM.
+- **Nueva "mejor serie"** (`isBetterSet` en `features/history/stats.ts`): **más peso**; con el mismo peso, **más reps**. Las series sin peso cuentan como 0 kg, así que se comparan por reps.
+- **Historial:** la gráfica pasa a ser el **peso máximo por sesión**. La tabla muestra fecha, mejor serie, **Δ peso máx.**, reps y peso movido. Si el ejercicio no tiene series con peso, se explica que se siga por las reps de la tabla.
+- **Resumen post-entrenamiento:** columnas mejor serie hoy, anterior, **Δ peso máx.** y **reps totales** (con su diferencia). La insignia **Récord** ahora significa que la mejor serie supera a la de todas las sesiones anteriores (más peso, o el mismo peso con más reps). Igualar sigue sin contar.
+
+### 2. "Iniciar tabla" → "Empezar entrenamiento"
+
+- En la pestaña de la tabla y en el historial. Misma ruta y lógica. También se ajustó el texto del historial vacío.
+
+### 3. Vista compacta (tabla y entrenamiento activo)
+
+| Regla de la spec | Implementación |
+|------------------|----------------|
+| Cabecera en una línea | Nº + nombre + **insignia de músculo** ("Pecho · Barra", `MuscleBadge`) a la izquierda; a la derecha, la nota y el **menú ⋯** (`components/ActionMenu.tsx`: Editar, Subir, Bajar, Eliminar). En el entrenamiento, el contador "1/4". |
+| Notas colapsadas | Botón de nota (`components/NoteToggle.tsx`, `aria-expanded`) que despliega el texto. Solo aparece si hay notas. |
+| Filas densas | Filas `py-1`, inputs de **32 px** (`h-8`). |
+| Una cabecera de columnas | Entrenamiento: tabla real con **Serie · Tipo · Anterior · Peso (kg) · Reps · ✓**. Cada input tiene su nombre accesible ("Reps de la serie 2 de Press… (objetivo 8-10)"). En el editor de series (modal), cabecera única **# · Tipo · Kg · Mín · Máx · RIR**. |
+| Tipos abreviados | **WARM · NORM · TOP · BACK · RP · DROP** (`SET_TYPE_SHORT`). Insignia `<abbr>` con el nombre completo como tooltip y para lectores de pantalla. En el editor, el selector es abreviado y debajo hay una leyenda. El historial mantiene los nombres completos. |
+| "+ Añadir serie" integrado | Fila baja al pie de cada ejercicio. **En la tabla** añade una serie copiando la última y la guarda al instante (`withExtraSet`). **En el entrenamiento** añade una serie extra; si la última extra no está hecha, aparece "Quitar serie extra" en la misma fila. |
+
+- **El objetivo de cada serie** ("6-8 reps · 100 kg") ya no ocupa una línea. Las reps objetivo son el placeholder del input de reps y, como el peso del input, aparecen en su tooltip y su nombre accesible.
+- Menú ⋯: teclado completo (↑/↓, Inicio/Fin, Esc devuelve el foco al botón, Tab cierra) y cierre al pulsar fuera. "Subir" y "Bajar" se desactivan en los extremos.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` | ✅ (aviso nuevo de tamaño del bundle → pendiente #8) |
+| Flujos de interfaz con Edge vía CDP (API en el puerto 3100 y web en el 5273 con base de datos temporal, porque el `npm run dev` del usuario ocupaba 3000/5173) | ✅ 19/19 |
+| Capturas revisadas | Tabla, editor y entrenamiento en móvil (390 px, sin scroll horizontal); historial y resumen en escritorio |
+| **Base de datos real** | Sin datos de prueba: solo la rutina del usuario ("PPL"), sus 2 sesiones y el catálogo (120) ✅ |
+
+**Qué cubren los flujos:**
+- Botón renombrado.
+- Insignia de músculo y nota colapsada que se despliega.
+- Insignias abreviadas con su nombre completo.
+- Menú ⋯ por teclado, "Subir" desactivado y reordenar con "Bajar".
+- "+ Añadir serie" en la tabla: la API guarda la copia de la última serie.
+- Editor con una sola cabecera e inputs de 32 px.
+- Entrenamiento: cabecera única, columna Anterior, filas de 44 px o menos, error al marcar sin reps (con foco en las reps), marcar la serie y añadir y quitar una serie extra.
+- Historial y resumen sin e1RM: Δ peso +5 kg, 2 récords (uno de peso y otro de reps sin peso) y reps "25 (=)" y "24 (+3)".
+
+**Incidencias del test (no eran fallos de la app):**
+1. `btn('Editar')` encontraba el botón "Editar" de la rutina en lugar del del menú. Se limitó la búsqueda al menú.
+2. El rango de reps usa guion normal ("6-8").
+3. `innerText` incluye el texto solo para lectores de pantalla y no incluye los márgenes.
+
+- **Ajuste real:** la insignia de músculo usaba `inline-flex`, y su texto se leía partido en dos líneas ("Pecho / · Barra"). Ahora es `inline-block`.
+- **Durante la prueba se pararon los servidores de desarrollo del usuario** (3000/5173). No consta que fuera la limpieza de las pruebas, que solo cerró sus propios procesos, pero no se puede descartar. Basta con volver a lanzar `npm run dev`.

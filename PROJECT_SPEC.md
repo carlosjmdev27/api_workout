@@ -260,7 +260,7 @@ El entrenamiento tendrá un estado activo controlado por el usuario:
   - Crear componente `ActiveWorkoutTimer` basado en `started_at` (nunca con `setInterval` sumando `+1` a ciegas, para evitar congelamientos en móvil).
   - Implementar persistencia temporal en `localStorage` (`active_workout_draft`) para tolerancia a fallos/recargas accidentales en el gimnasio.
 
-9. Actualizacion v4
+
 
 ---
 
@@ -287,3 +287,34 @@ Para evitar latencia en el gimnasio y dependencia de servicios externos caídos,
   1. Sustituir el input de texto simple al añadir un ejercicio a una tabla por un **Combobox / Autocompletado con filtro por grupo muscular**.
   2. Al escribir (ej. *"press"*), mostrar sugerencias agrupadas con etiqueta de grupo muscular y equipamiento.
   3. Si el ejercicio escrito no existe en el catálogo, mostrar la opción rápida: *`+ Crear y añadir "[Nombre escrito]"`* para guardarlo al instante sin bloquear al usuario.
+
+  ---
+
+10. Actualizacion v5
+
+## 🎨 Fase 7: Refinamiento UI/UX, Renombrado y Compactación Visual
+
+### 1. Eliminación del 1RM Estimado (e1RM)
+- **Objetivo**: Simplificar las métricas de progresión centrándose únicamente en datos reales ejecutados (peso levantado, repeticiones realizadas y volumen total).
+- **Tareas**:
+  1. Eliminar cualquier cálculo, columna, badge, tarjeta o gráfica de **1RM / e1RM** en la vista de entrenamiento activo, en el resumen post-entrenamiento y en la vista de historial de sesiones.
+  2. Mantener intactas las métricas reales: historial de sesiones pasadas, comparativa serie a serie (*Anterior*), peso máximo movido y repeticiones totales.
+
+### 2. Renombrado de Acción Principal
+- **Objetivo**: Unificar la terminología de la interfaz para que sea más natural.
+- **Tareas**:
+  1. Cambiar el texto del botón `"Iniciar Tabla"` (y cualquier referencia equivalente en cabeceras o tooltips) por **`"Empezar Entrenamiento"`** manteniendo exactamente la misma ruta y lógica de inicio de sesión activa.
+
+### 3. Compactación Vertical de la Vista de Ejercicios en Tabla
+- **Objetivo**: Reducir el desplazamiento vertical (*scroll*) para visualizar más ejercicios y series de un solo vistazo, tanto en la vista de edición/detalle de la tabla como durante el entrenamiento activo, **sin eliminar ninguna funcionalidad**.
+- **Reglas de Diseño Compacto**:
+  1. **Cabecera del Ejercicio en una sola línea (`flex-row justify-between items-center`)**:
+     - Nombre del ejercicio + badge discreto de grupo muscular a la izquierda.
+     - Menú de acciones (`...` o iconos compactos para editar, reordenar, añadir serie o eliminar) a la derecha, eliminando barras de herramientas secundarias que ocupen altura extra.
+     - Si el ejercicio tiene notas técnicas, mostrarlas colapsadas bajo un icono/botón compacto de nota (expandible al hacer clic) en lugar de un bloque de texto abierto permanentemente.
+  2. **Tabla/Filas de Series de Alta Densidad**:
+     - Reducir padding vertical de las filas de series (`py-1.5` o `py-2` máximo) y altura de los inputs (`h-8` / `32px`), manteniendo buen área táctil horizontal.
+     - Usar una **cabecera de columnas única** por ejercicio (`Serie | Tipo | Anterior | Peso (kg) | Reps | ✓`) en lugar de repetir etiquetas (*labels*) encima de cada input en cada fila.
+     - Sustituir selectores largos de tipo de serie por **badges/selectores compactos** con abreviaturas claras y tooltip (ej. `TOP`, `BACK`, `RP`, `WARM`, `NORM`).
+  3. **Botón `+ Añadir serie` integrado**:
+     - Colocarlo como una fila sutil de baja altura en el pie de la tabla de series del ejercicio, evitando botones grandes con márgenes amplios entre tarjetas.
