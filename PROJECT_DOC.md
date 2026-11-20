@@ -1240,3 +1240,13 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
 **Fallo real encontrado y corregido:** tras iniciar sesión desde un enlace directo, la app acababa en "/" en vez de en la página pedida. Competían dos redirecciones: la del formulario y la de la ruta pública. Con React Router v7 la navegación se aplica como transición, y ganaba "/". Ahora solo redirige `<PublicOnlyRoute>`.
 
 **No se ha registrado ninguna cuenta** ni en la base de datos de desarrollo ni en la de Docker: la primera cuenta, y con ella los datos actuales, es del usuario.
+
+---
+
+## 2026-11-20 · Cuenta del usuario creada
+
+- A petición del usuario se creó la cuenta **"Pruebas"** (`pruebas@gym.local`) como **primera cuenta** en las dos bases de datos. Así se queda con los datos existentes: la rutina "PPL" y sus 2 sesiones. Fue una decisión explícita del usuario: esta cuenta es la suya.
+- **Docker:** registrada a través de http://localhost:8080. Log de la API: `existing routines and history assigned to user …`.
+- **Desarrollo:** se arrancó la API un momento sobre `server/database/gym.sqlite`. Se aplicó la migración v5 (integridad correcta, 2 vínculos al catálogo intactos, 0 rutinas sin dueño) y se registró la cuenta. Después se paró la API.
+- Verificado en los dos entornos: la rutina "PPL" es visible y el login responde 200.
+- **La contraseña no está en este documento.** Solo está en `INSTRUCCIONESDEEJECUCION.md`, que es local y no se sube.
