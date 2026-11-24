@@ -14,7 +14,8 @@ interface AuthCardProps {
 /** Minimal centered shadcn/ui Card shared by the login and register screens. */
 export function AuthCard({ title, subtitle, children, footer }: AuthCardProps): JSX.Element {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
+    // 100dvh, not 100vh: exactly the visible screen on mobile, so the form never scrolls when it fits.
+    <div className="relative flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 py-10">
       {/* No header on these screens: the theme switch sits in the top-right corner. */}
       <ThemeToggle className="absolute top-3 right-3" />
       <div className="mb-6 flex items-center gap-2 text-lg font-semibold text-foreground">

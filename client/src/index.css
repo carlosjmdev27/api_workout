@@ -109,4 +109,9 @@
   html {
     @apply font-sans;
   }
+  /* No elastic bounce / scroll chaining on mobile when there is nothing to scroll (Fase 14). */
+  html,
+  body {
+    @apply overscroll-y-none;
+  }
 }

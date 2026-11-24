@@ -504,3 +504,19 @@ Actualizar el frontend de **AuraWorkout** integrando de forma conjunta:
 - Colocar un botón compacto de icono (`variant="ghost"` o `outline`, tamaño `icon`) en la barra superior de **AuraWorkout**, junto al menú de usuario / cerrar sesión.
 - Usar iconos de **Lucide React**: mostrar `<Sun />` cuando está activo el modo oscuro (indicando cambio a claro) y `<Moon />` cuando está activo el modo claro.
 - Asegurar que tanto los componentes de `shadcn/ui` como las gráficas de `Recharts` (ejes, tooltips y cuadrículas) usen las variables CSS del tema para verse nítidos en ambos modos.
+
+---
+
+## 📱 Fase 14: Control Inteligente de Scroll y Viewport Móvil (`100dvh`)
+
+### 1. Objetivo
+Eliminar el desplazamiento innecesario, los espacios muertos inferiores y el efecto rebote (*overscroll*) en dispositivos móviles cuando el contenido de la vista cabe íntegramente en pantalla, manteniendo el scroll fluido únicamente cuando la altura del contenido supera el viewport real.
+
+### 2. Requisitos Técnicos en CSS / Tailwind
+1. **Altura Dinámica Real (`100dvh`)**:
+   - Sustituir `h-screen` / `min-h-screen` (`100vh`) en el contenedor principal de la aplicación por `min-h-[100dvh]` (o `h-[100dvh]` en el layout base), evitando que la barra de direcciones y navegación de Safari iOS / Chrome Android provoque un scroll vertical artificial de unos pocos píxeles.
+2. **Bloqueo de Rebote (*Overscroll*) y Márgenes Fantasma**:
+   - Aplicar `overscroll-behavior-y: none` (`overscroll-y-none` en Tailwind) en `html` y `body` para evitar el rebote elástico en móviles cuando no hay contenido extra que desplazar.
+   - Revisar que ningún contenedor padre, `footer` o padding inferior (`pb-*`) añada altura extra innecesaria que fuerce el scroll en vistas cortas (Login, Dashboard vacío o con pocas rutinas).
+3. **Scroll Condicional por Contenedor**:
+   - Estructurar el layout principal con Flexbox vertical (`flex flex-col min-h-[100dvh]`): cabecera fija en la parte superior y área principal (`main`) con `flex-1` que solo genere scroll vertical (`overflow-y-auto`) cuando el contenido interno realmente desborde el alto disponible.

@@ -40,6 +40,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Fase 13 de la spec (interruptor de tema claro/oscuro):** ✅ Completada (2026-11-24).
 
+**Fase 14 de la spec (scroll y viewport móvil con 100dvh):** ✅ Completada (2026-11-24).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -1558,3 +1560,51 @@ Hecho con la CLI de Railway (v5.75.0), con la sesión del usuario.
 - **Cambio de tema en la propia página del historial:** la gráfica pasa al instante a lima `#A3E635`, rejilla `#27272A` y ejes `#A1A1AA`.
 - Modal en claro.
 - Sin errores de ejecución.
+
+---
+
+## 2026-11-24 · Fase 14: scroll y viewport móvil (`100dvh`, sin rebote)
+
+### Causa del "scroll fantasma"
+
+- El layout (`Layout`) y las pantallas de login/registro (`AuthCard`) usaban `min-h-screen` = **`100vh`**.
+- En Safari iOS y Chrome Android, `100vh` es la altura con la barra de direcciones **oculta**. Mientras la barra se ve, la página mide unos píxeles más que la pantalla y aparece un scroll artificial.
+
+### Cambios
+
+| Dónde | Antes | Ahora |
+|-------|-------|-------|
+| `Layout` (todas las páginas privadas) | `min-h-screen` | `flex min-h-[100dvh] flex-col`; cabecera `sticky` y `shrink-0`; `main` con **`flex-1`** y `w-full` |
+| `AuthCard` (login / registro) | `min-h-screen` | `min-h-[100dvh]` |
+| `Modal` (contenido) | `max-h-[75vh]` | `max-h-[75dvh]`: con la barra visible tampoco se sale de la pantalla |
+| `html`, `body` (`index.css`) | — | **`overscroll-y-none`**: sin rebote elástico ni scroll encadenado |
+
+- **`100dvh`** = viewport dinámico: sigue a las barras del navegador móvil.
+- **Revisión de altura extra:** no hay `footer`. El único `pb-*` grande es el `pb-28` de la pantalla de entrenamiento, que es necesario porque reserva el hueco del botón fijo "Terminar entrenamiento" y solo existe en esa pantalla, que es larga. No hay ningún otro margen o padding que fuerce scroll.
+
+### Diferencia con la spec (punto 3)
+
+- Se usa la estructura pedida (flex vertical, `min-h-[100dvh]`, `main` con `flex-1`), pero **el scroll sigue en el documento**, no en un `main` con `overflow-y-auto`.
+- El resultado es el mismo: solo hay scroll cuando el contenido no cabe.
+- Un contenedor con scroll propio rompería tres cosas:
+  1. la barra del entrenamiento (`sticky top-14`, cronómetro y Cancelar), que se pega con el scroll de la página;
+  2. que la barra de direcciones del móvil se oculte al bajar (se perdería pantalla justo donde hay más ejercicios);
+  3. la restauración del scroll al volver atrás.
+
+### Efecto secundario a tener en cuenta
+
+- `overscroll-behavior: none` en `html` **desactiva el "deslizar hacia abajo para recargar"** de Chrome Android.
+- Es parte de lo que pide la spec (sin rebote). Además evita recargas accidentales en mitad de un entrenamiento, aunque el borrador está guardado igualmente.
+- Si se quisiera recuperarlo, bastaría con dejar `overscroll-y-none` solo en `body`.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` (incluye el build) | ✅ |
+| CSS aplicado | ✅ `overscroll-behavior-y: none` en `html` y `body`; `min-height: 100dvh` igual a la altura de la ventana |
+| **Sin scroll en vistas cortas** a 390×844, 375×667 y 360×640 | ✅ **0 px** desplazables en login, dashboard vacío y dashboard con 2 rutinas y la tarjeta de añadir |
+| Layout | ✅ Columna flex; el `main` llega exactamente al borde inferior (844 = 844) |
+| **Scroll normal en vistas largas** | ✅ Tabla con 8 ejercicios: 1617 px de scroll con la cabecera fija arriba. Entrenamiento: se desplaza, la barra del cronómetro se mantiene a 56 px y el último ejercicio queda por encima del botón "Terminar entrenamiento" |
+
+**Limitación del test:** Chrome en modo headless no simula la barra de direcciones que aparece y desaparece. Por eso se verificó que la regla aplicada es `100dvh` y que no sobra ni un píxel. La prueba definitiva es abrir la app en el móvil.

@@ -43,7 +43,7 @@ export function Modal({ open, title, onClose, children, size = 'md' }: ModalProp
         </h2>
         <IconButton icon={X} label="Cerrar" onClick={onClose} />
       </div>
-      <div className="max-h-[75vh] overflow-y-auto px-5 py-4">{open && children}</div>
+      <div className="max-h-[75dvh] overflow-y-auto px-5 py-4">{open && children}</div>
     </dialog>
   );
 }
