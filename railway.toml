@@ -1,0 +1,13 @@
+# Railway deploy settings (read automatically from the repo root).
+# Variables and the volume are configured in the Railway dashboard (see README).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# New deploys only receive traffic once the API answers (DB opened, migrations applied).
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

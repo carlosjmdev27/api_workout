@@ -32,6 +32,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Actualización §12 de la spec (login: JWT, contraseñas con bcrypt, multiusuario y rutas protegidas):** ✅ Completada (2026-11-20).
 
+**Actualización §13 de la spec (despliegue en Railway: imagen única con Express sirviendo web + API):** ✅ Preparada y verificada en local (2026-11-24). Falta el despliegue en el panel de Railway, que hace el usuario.
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -1272,3 +1274,66 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
 - **Hallazgo:** después de mover la raíz del proyecto, `docker compose up -d --build` reconstruyó las imágenes (había cambiado `package-lock.json`, solo metadatos de un paquete opcional de Tailwind, sin cambios de versión), pero **no recreó los contenedores**: seguían con las imágenes de la fase 9. Se detectó comparando el id de la imagen de cada contenedor con el de la imagen construida.
 - **Solución aplicada:** `docker compose up -d --force-recreate`. Los dos servicios quedan `healthy`, ya con la imagen actual, y la cuenta del usuario sigue viendo "PPL" (los datos están en el volumen).
 - **Documentado en `INSTRUCCIONESDEEJECUCION.md`** (local): para aplicar cambios del código se usa `docker compose up -d --build --force-recreate`, con un comando de PowerShell que comprueba que cada contenedor usa la imagen recién construida.
+
+---
+
+## 2026-11-24 · Actualización §13: despliegue en Railway (un solo servicio)
+
+### Higiene del repositorio (revisada antes que nada)
+
+- **Historial de Git auditado:** en ningún commit se ha subido nunca un `.env` real ni una base de datos. Solo los tres `.env.example`, con valores ficticios.
+- **Hueco corregido en `.gitignore`:** solo ignoraba los `.sqlite` de `server/database/`. Una copia como `gym-backup.sqlite` en la raíz (el comando de copia de seguridad del README la deja ahí) o una carpeta `data/` **se habrían subido**. Ahora se ignoran en todo el repositorio:
+  - `*.sqlite`, `*.sqlite3`, `*.db` y sus `-journal`, `-wal` y `-shm`;
+  - `data/`, todo `server/database/` (salvo `.gitkeep`) y `.env`, `.env.*` y `.env.local` (salvo `.env.example`).
+  - Verificado con `git check-ignore` caso por caso.
+- **`.dockerignore`:** se añaden `data`, `build`, `*.sqlite3` y `*.db-*`, y ya no se incluye ningún `.env*` en el contexto. Verificado: **la imagen no contiene ningún `.env` ni ninguna base de datos**.
+
+### Backend
+
+| Requisito | Implementación |
+|-----------|----------------|
+| Puerto dinámico | `PORT` por defecto 3000. Se escucha en **`HOST`**, por defecto `0.0.0.0`. |
+| `DATABASE_PATH` | Por defecto `./data/database.sqlite`, relativo a `/server`; el desarrollo local sigue con el suyo en `server/.env`. En Railway, `/app/data/database.sqlite`. La carpeta se crea sola (`mkdirSync` recursivo, ya existía). **El arranque escribe en el log la ruta usada**, para comprobar en Railway que está en el volumen. |
+| Web estática | En producción, si existe `PUBLIC_DIR/index.html` (por defecto `../public` = `/app/public`). Si no hay web, como en el backend de `docker-compose` con nginx, se sirve solo la API. |
+| Fallback de SPA | `spa.middleware.ts`: cualquier `GET`/`HEAD` que **no** sea `/api` ni tenga extensión de archivo → `index.html`. Así `/assets/no-existe.js` da 404 (no HTML), un POST a una ruta de la web da 404 y `/api/...` siempre responde JSON. |
+| Caché | `/assets/*`: 1 año e `immutable`. `index.html`: `no-cache`, para que un despliegue se vea al momento. |
+| `JWT_SECRET` | Obligatorio en **todos** los entornos, con un mensaje claro si falta: `JWT_SECRET is required … (Railway: Variables tab)`. |
+| CORS | `CORS_ORIGIN` pasa a ser **opcional**. Sin él no se envía ninguna cabecera CORS, así que el navegador bloquea cualquier otro origen: es lo que necesita producción. En desarrollo sigue configurado. |
+| Compresión | `compression` (gzip): sin nginx delante, el JS ocuparía 505 kB en vez de unos 153 kB. |
+| Apagado | `server.closeIdleConnections()` y salida forzada a los 8 s, para no quedarse colgado si Railway espera. |
+
+- Las variables vacías (`""`, típicas de los paneles) cuentan como no definidas.
+
+### Frontend
+
+- `http-client`: en un build de producción, si falta `VITE_API_URL`, usa **`/api`** (relativa). El Dockerfile la fija a `/api` y además se comprobó que el bundle no contiene `localhost:3000`.
+
+### Dockerfile unificado (`/Dockerfile`)
+
+- **Tres etapas**, como en la spec (más una base común con los `package.json` para cachear dependencias):
+  1. `frontend-builder` → React con `VITE_API_URL=/api`.
+  2. `backend-builder` → compila TypeScript y **reinstala solo las dependencias de producción**.
+  3. `production` → Node + `server/dist` + la web en `/app/public`.
+- `ENV NODE_ENV=production`, `DATABASE_PATH=/app/data/database.sqlite`, `HOST=0.0.0.0` y `PORT=3000` por defecto. Railway la sustituye por la suya.
+- **`node:22-alpine` en vez de `node:20`**: el proyecto exige Node ≥ 22 y Node 20 está fuera de soporte desde abril de 2026.
+- **Permisos del volumen:** Railway monta los volúmenes como `root`. `docker-entrypoint.sh` crea y cede la carpeta de la base de datos al usuario `node` y hace `exec su-exec node node /app/server/dist/server.js`. Resultado: **`node` es el PID 1, sin privilegios**, y recibe el `SIGTERM` directamente, que es lo que busca la spec al evitar `npm start`.
+- `railway.toml`: builder `DOCKERFILE`, healthcheck `/api/health` y reinicio si falla.
+- El `docker-compose.yml` (nginx + API) se mantiene para uso local; su backend ve que no hay web y sirve solo la API.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` | ✅ |
+| `docker build -t gym-app-prod .` | ✅ 277 MB. Sin `.env`, sin bases de datos y sin dependencias de desarrollo (typescript, tsx, vite, eslint) |
+| Arrancar sin `JWT_SECRET` | ✅ Se niega, con un mensaje claro |
+| **Simulación de Railway**: volumen propiedad de `root` en `/app/data`, `PORT=8090` inyectado y `TRUST_PROXY=1` | ✅ Carpeta cedida a `node`, `node` como PID 1, escucha en `0.0.0.0:8090` y base de datos creada en el volumen |
+| HTTP (14 comprobaciones) | ✅ Web en `/`, CSP de helmet, enlaces profundos → `index.html`, assets en caché 1 año y gzip, asset inexistente → 404, `/api` inexistente → 401 JSON, POST a una ruta de la web → 404, sin CORS para otros orígenes, registro, creación de datos y **límite de intentos por IP real detrás del proxy** (dos IP con `X-Forwarded-For` no se bloquean entre sí) |
+| `SIGTERM` | ✅ Para en 0,3 s, con código 0 y el WAL volcado (en el volumen solo queda `database.sqlite`) |
+| **Persistencia** | ✅ Contenedor borrado y recreado (incluso con otro `JWT_SECRET`) → login correcto y los datos siguen |
+| Navegador (Edge vía CDP, móvil) | ✅ La app funciona con la CSP de producción, el login muestra los datos, recargar en `/routines/:id` mantiene la página y no hay errores en consola |
+| Docker local (`docker-compose`) | ✅ Reconstruido y recreado: la API sin web (la sirve nginx) y la cuenta del usuario sigue viendo "PPL" |
+
+**Incidencia del test (no era fallo de la app):** el primer intento de login por la interfaz partía de `/routines`, que no es una ruta de la web (la lista está en `/`). La app hizo bien en volver a ella tras el login y mostrar "no existe".
+
+**Limpieza:** se borraron el contenedor y el volumen de prueba. Se conserva la imagen `gym-app-prod`.

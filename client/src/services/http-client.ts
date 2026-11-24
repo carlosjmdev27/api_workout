@@ -1,8 +1,11 @@
 import type { ApiError as ApiErrorBody, ApiErrorDetail, ApiSuccess } from '@gym/shared';
 import { clearToken, getToken, notifySessionExpired } from './auth-token';
 
+/** Production builds served by the API itself use a relative URL: works under any domain, no CORS. */
+const PRODUCTION_API_URL = '/api';
+
 function readApiUrl(): string {
-  const url = import.meta.env.VITE_API_URL;
+  const url = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? PRODUCTION_API_URL : undefined);
   if (!url) {
     throw new Error('VITE_API_URL is not defined. Copy client/.env.example to client/.env');
   }

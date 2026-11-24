@@ -1,3 +1,4 @@
+import compression from 'compression';
 import express, { type Express, type RequestHandler } from 'express';
 import type { AuthController } from './controllers/auth.controller.js';
 import type { CatalogController } from './controllers/catalog.controller.js';
@@ -7,6 +8,7 @@ import type { SessionController } from './controllers/session.controller.js';
 import type { WorkoutDayController } from './controllers/workout-day.controller.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
 import { securityMiddlewares } from './middlewares/security.middleware.js';
+import { serveSpa } from './middlewares/spa.middleware.js';
 import { createAuthRouter } from './routes/auth.routes.js';
 import { createCatalogRouter } from './routes/catalog.routes.js';
 import { createDayExerciseRouter } from './routes/day-exercise.routes.js';
@@ -25,7 +27,10 @@ export interface AppControllers {
 }
 
 export interface AppDependencies {
-  corsOrigin: string;
+  /** Only when the web runs on another origin (dev); undefined = same origin, no CORS. */
+  corsOrigin: string | undefined;
+  /** Built React app to serve (production, single service); null = API only. */
+  publicDir: string | null;
   isProduction: boolean;
   /** Number of reverse proxies in front (0 = none). */
   trustProxy: number;
@@ -35,13 +40,15 @@ export interface AppDependencies {
 }
 
 /** Builds the Express app. Receives its dependencies so it can be tested in isolation. */
-export function createApp({ corsOrigin, isProduction, trustProxy, requireAuth, controllers }: AppDependencies): Express {
+export function createApp(deps: AppDependencies): Express {
+  const { corsOrigin, publicDir, isProduction, trustProxy, requireAuth, controllers } = deps;
   const app = express();
 
   app.disable('x-powered-by');
-  // Behind nginx, req.ip must be the client's IP (X-Forwarded-For) for rate limiting.
+  // Behind a proxy (nginx, Railway), req.ip must be the client's IP (X-Forwarded-For) for rate limiting.
   if (trustProxy > 0) app.set('trust proxy', trustProxy);
   app.use(securityMiddlewares(corsOrigin));
+  app.use(compression()); // gzip for the JS bundle and JSON (no nginx in front on Railway).
   app.use(express.json({ limit: '10kb' }));
 
   // Public.
@@ -55,6 +62,9 @@ export function createApp({ corsOrigin, isProduction, trustProxy, requireAuth, c
   app.use('/api', createCatalogRouter(controllers.catalog)); // Before /exercises/:exerciseId.
   app.use('/api', createDayExerciseRouter(controllers.dayExercise));
   app.use('/api', createSessionRouter(controllers.session));
+
+  // Web (production): static files + SPA fallback for every non-/api GET.
+  if (publicDir) app.use(serveSpa(publicDir));
 
   app.use(notFoundHandler);
   app.use(errorHandler(isProduction));

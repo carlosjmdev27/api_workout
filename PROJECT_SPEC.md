@@ -400,3 +400,50 @@ Para preparar la aplicación antes de exponerla fuera de la red local, cada ruti
 
 #### Docker & Variables de Entorno
 - Actualizar `.env.example` y `docker-compose.yml` añadiendo `JWT_SECRET` y `ALLOW_REGISTRATION=true` en el servicio `backend`.
+
+
+---
+
+13. Deploy en railway
+
+## 🚀 Fase 10: Preparación para Despliegue en Producción (Railway + Docker Unificado)
+
+### 1. Objetivo de Arquitectura en Producción
+Unificar el **frontend (React)** y el **backend (Node.js/Express)** en un único servicio y un único contenedor Docker en la raíz del proyecto para desplegarlo en **Railway**, evitando costes duplicados, problemas de CORS y garantizando la persistencia de la base de datos SQLite en un volumen externo.
+
+### 2. Requisitos Técnicos Obligatorios
+
+#### A. Adaptación del Backend (Node.js / Express)
+1. **Puerto Dinámico**: El servidor debe escuchar obligatoriamente en `process.env.PORT || 3000` y en la interfaz `0.0.0.0` (requerido por Railway para enrutar el tráfico público).
+2. **Ruta Persistente de Base de Datos**:
+   - Leer la ruta del archivo SQLite desde la variable de entorno `DATABASE_PATH` (con fallback local `./data/database.sqlite`).
+   - Asegurar por código (`fs.mkdirSync(path.dirname(dbPath), { recursive: true })`) que la carpeta padre se cree automáticamente si aún no existe al montar un volumen vacío.
+3. **Servir el Frontend Estático en Producción**:
+   - Cuando `NODE_ENV === 'production'`, Express debe servir los archivos compilados de React (`express.static` apuntando a la carpeta `public` o `dist` generada).
+   - **Fallback para React Router (SPA)**: Cualquier ruta `GET` que **no** empiece por `/api` debe devolver `index.html` para que la navegación interna del frontend no dé error `404` al recargar la página.
+4. **Seguridad y Registro**:
+   - Validar que `JWT_SECRET` esté configurado en producción (lanzar error claro si falta en `NODE_ENV === 'production'`).
+   - Soportar `ALLOW_REGISTRATION` (`'true'` / `'false'`) para permitir bloquear nuevos registros una vez creada la cuenta personal en la nube.
+
+#### B. Ajuste del Frontend (React / Vite)
+1. **URLs Relativas de API**: Asegurar que en producción las llamadas al backend usen rutas relativas (`/api/...`) en lugar de `http://localhost:3000`, para que funcionen bajo cualquier dominio asignado por Railway sin configurar CORS.
+
+#### C. Dockerfile Multi-Etapa en la Raíz (`/Dockerfile`)
+Crear un `Dockerfile` limpio en la raíz del proyecto (manteniendo el `docker-compose.yml` anterior solo si se desea para desarrollo local) con 3 etapas:
+1. **Etapa 1 (`frontend-builder`)**: Imagen `node:20-alpine`, instala dependencias del frontend y ejecuta `npm run build`.
+2. **Etapa 2 (`backend-builder`)**: Imagen `node:20-alpine`, instala dependencias del backend (compilando módulos si los hubiera y limpiando `devDependencies` para producción).
+3. **Etapa 3 (`production`)**: Imagen final ligera `node:20-alpine` que copia:
+   - El backend compilado/listo para producción.
+   - El build estático del frontend dentro de la carpeta que servirá Express (ej. `/app/public`).
+   - Define `ENV NODE_ENV=production` y arranca el servidor con `node ...` (evitando `npm start` para gestionar correctamente señales de apagado `SIGTERM` en Railway).
+
+#### D. Higiene del Repositorio antes de GitHub (`.gitignore` y `.dockerignore`)
+1. Revisar y actualizar `.gitignore` en la raíz para garantizar que **NUNCA** se suban a GitHub:
+   - Archivos `.env` y `.env.local` (mantener solo `.env.example` con valores ficticios).
+   - Archivos de base de datos locales (`*.sqlite`, `*.sqlite3`, `*.db`, carpeta `data/`).
+   - `node_modules/`, `dist/`, `build/`.
+2. Crear `.dockerignore` en la raíz excluyendo `node_modules`, `.git`, `.env`, `*.sqlite` y `dist` para acelerar la subida y construcción de la imagen en Railway.
+
+### 3. Verificación Final antes del Push
+- Comprobar que la imagen se construye sin errores localmente ejecutando `docker build -t gym-app-prod .`.
+- Entregar un breve resumen con las variables de entorno exactas que debo pegar en el panel de **Railway** (`PORT`, `NODE_ENV`, `DATABASE_PATH`, `JWT_SECRET`, `ALLOW_REGISTRATION`) y la ruta del volumen (`/app/data`).

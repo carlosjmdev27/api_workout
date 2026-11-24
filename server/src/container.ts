@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Express } from 'express';
 import { createApp } from './app.js';
@@ -37,8 +38,20 @@ export interface Container {
  * Composition root: the only place that knows the concrete implementations.
  * Switching to PostgreSQL means swapping the repositories built here.
  */
+/** The built web, only in production and only if it was actually copied into the image. */
+function resolvePublicDir(env: Env): string | null {
+  if (env.NODE_ENV !== 'production') return null;
+  const dir = resolve(SERVER_ROOT, env.PUBLIC_DIR);
+  if (existsSync(resolve(dir, 'index.html'))) return dir;
+  console.log(`No web build at ${dir}: serving the API only`);
+  return null;
+}
+
 export function buildContainer(env: Env): Container {
-  const db = openDatabase(resolve(SERVER_ROOT, env.DATABASE_PATH));
+  const databasePath = resolve(SERVER_ROOT, env.DATABASE_PATH);
+  console.log(`SQLite database: ${databasePath}`); // On Railway it must be inside the volume (/app/data).
+  const db = openDatabase(databasePath);
+  const publicDir = resolvePublicDir(env);
 
   const access = new AccessGuard(new SqliteOwnershipRepository(db));
   const authService = new AuthService(new SqliteUserRepository(db), new PasswordService(), new TokenService(env.JWT_SECRET), {
@@ -52,6 +65,7 @@ export function buildContainer(env: Env): Container {
 
   const app = createApp({
     corsOrigin: env.CORS_ORIGIN,
+    publicDir,
     isProduction: env.NODE_ENV === 'production',
     trustProxy: env.TRUST_PROXY,
     requireAuth: authenticate(authService),

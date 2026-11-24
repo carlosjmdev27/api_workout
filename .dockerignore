@@ -4,18 +4,23 @@
 # Dependencies and build output (rebuilt inside the image)
 **/node_modules
 **/dist
+**/build
 **/*.tsbuildinfo
 
-# Secrets and local config: never baked into an image
+# Secrets and local config: never baked into an image (configuration comes from
+# environment variables: Railway dashboard / docker-compose)
 **/.env
 **/.env.*
-!**/.env.example
 
-# Local database: data lives in the Docker volume, never in the image
+# Local databases: data lives in a volume (/app/data on Railway), never in the image
 server/database
+**/data
 **/*.sqlite
 **/*.sqlite-*
+**/*.sqlite3
+**/*.sqlite3-*
 **/*.db
+**/*.db-*
 
 # Repo, editor and docs
 .git
