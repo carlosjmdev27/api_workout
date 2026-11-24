@@ -32,7 +32,7 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Actualización §12 de la spec (login: JWT, contraseñas con bcrypt, multiusuario y rutas protegidas):** ✅ Completada (2026-11-20).
 
-**Actualización §13 de la spec (despliegue en Railway: imagen única con Express sirviendo web + API):** ✅ Preparada y verificada en local (2026-11-24). Falta el despliegue en el panel de Railway, que hace el usuario.
+**Actualización §13 de la spec (despliegue en Railway: imagen única con Express sirviendo web + API):** ✅ Desplegada (2026-11-24) en https://apiworkout-production.up.railway.app
 
 ### Pendientes / deuda técnica
 
@@ -1337,3 +1337,40 @@ Mucho de lo que pedía la §8 ya existía desde la Fase 4 v2: vista de ejecució
 **Incidencia del test (no era fallo de la app):** el primer intento de login por la interfaz partía de `/routines`, que no es una ruta de la web (la lista está en `/`). La app hizo bien en volver a ella tras el login y mostrar "no existe".
 
 **Limpieza:** se borraron el contenedor y el volumen de prueba. Se conserva la imagen `gym-app-prod`.
+
+---
+
+## 2026-11-24 · Despliegue real en Railway
+
+Hecho con la CLI de Railway (v5.75.0), con la sesión del usuario.
+
+- **Proyecto:** `alert-wonder` (creado por el usuario desde GitHub) → servicio `api_workout`, entorno `production`. El primer despliegue se había detenido, como era de esperar: faltaba `JWT_SECRET` y la app mostró su mensaje claro.
+- **Volumen** `api_workout-volume` en **`/app/data`** (500 MB).
+- **Variables:** `NODE_ENV=production`, `DATABASE_PATH=/app/data/database.sqlite`, `ALLOW_REGISTRATION=true`, `TRUST_PROXY=1` y `JWT_SECRET`. Este último se generó nuevo (64 caracteres) y se envió por stdin: nunca apareció en pantalla ni está en ningún archivo.
+- **Dominio:** https://apiworkout-production.up.railway.app. Railway asignó `PORT=8080` y la app lo leyó sola.
+- **Logs:** `SQLite database: /app/data/database.sqlite`, es decir, dentro del volumen ✅.
+
+### `railway.toml` retirado
+
+- La CLI avisa de que **Config as Code** (`railway.toml`/`railway.json`) deja de funcionar el **2026-12-01**. La alternativa que propone (`railway config migrate`, con `.railway/railway.ts`) se probó en modo simulado y **no se aplicó**:
+  - fijaba el despliegue a un commit concreto;
+  - no incluía el volumen, y con ese sistema el archivo pasa a gestionar los recursos del servicio, con riesgo para la base de datos;
+  - es un sistema nuevo.
+- En su lugar, los mismos ajustes se guardaron **en el propio servicio** mediante la API GraphQL oficial (`serviceInstanceUpdate`): `dockerfilePath=Dockerfile`, healthcheck `/api/health` (60 s) y reinicio `ON_FAILURE` (5 intentos). Después se borró `railway.toml` (`00cd513`).
+- **Verificado:** sin el archivo, Railway construye con nuestro `Dockerfile` (el log muestra `frontend-builder`, `backend-builder` y `su-exec`). El builder del servicio aparece como `RAILPACK`, pero con un `Dockerfile` en la raíz se usa este.
+
+### Despliegue automático
+
+- El servicio tenía el repositorio como origen, pero **ningún trigger**: un `git push` no desplegaba. Se reconectó con `railway service source connect --repo carlosjmdev27/api_workout --branch main` y ahora hay un trigger de GitHub en `main`. El volumen y las variables siguen intactos.
+
+### Verificación en producción (solo lectura, sin crear cuentas)
+
+✅ 11 de 11:
+- `/api/health` responde 200 por HTTPS y HTTP redirige a HTTPS con un 301.
+- La web se sirve en `/` y los enlaces profundos devuelven `index.html`.
+- CSP y HSTS de helmet activas.
+- JS en caché 1 año y comprimido con gzip; un asset inexistente da 404.
+- `/api/routines` sin token responde 401 JSON y no hay CORS para otros orígenes.
+- El registro es alcanzable (la prueba con el body vacío da 400 y no crea nada) y el límite de intentos funciona detrás del proxy de Railway.
+
+**Pendiente del usuario:** crear su cuenta en la URL pública (la base de datos de Railway empieza vacía) y poner `ALLOW_REGISTRATION=false`.
