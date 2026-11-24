@@ -1,5 +1,5 @@
-import type { AuthResponse, LoginInput, RegisterInput, User } from '@gym/shared';
-import { ConflictError, ForbiddenError, UnauthorizedError } from '../errors/app-error.js';
+import type { AuthResponse, LoginInput, PasswordChange, ProfileUpdate, RegisterInput, User } from '@gym/shared';
+import { BadRequestError, ConflictError, ForbiddenError, UnauthorizedError } from '../errors/app-error.js';
 import type { UserRepository } from '../repositories/user.repository.js';
 import type { PasswordService } from './password.service.js';
 import type { TokenService } from './token.service.js';
@@ -61,6 +61,27 @@ export class AuthService {
     const user = await this.users.findById(userId);
     if (!user) throw sessionExpired();
     return user;
+  }
+
+  /** Name + email (normalized by the schema). Another account's email -> 409. */
+  async updateProfile(userId: string, input: ProfileUpdate): Promise<User> {
+    const updated = await this.users.updateProfile(userId, { name: input.name, email: input.email });
+    if (updated === undefined) throw sessionExpired();
+    if (updated === null) throw new ConflictError('EMAIL_IN_USE', 'An account with this email already exists');
+    return updated;
+  }
+
+  /**
+   * Requires the current password. Answers 400 (not 401) when it is wrong: a 401 means
+   * "your session is invalid" and the client would log the user out.
+   */
+  async changePassword(userId: string, input: PasswordChange): Promise<void> {
+    const hash = await this.users.findPasswordHash(userId);
+    if (hash === null) throw sessionExpired();
+    if (!(await this.passwords.matches(input.currentPassword, hash))) {
+      throw new BadRequestError('INVALID_CURRENT_PASSWORD', 'The current password is incorrect');
+    }
+    await this.users.updatePasswordHash(userId, await this.passwords.hash(input.newPassword));
   }
 
   private issue(user: User): AuthResponse {

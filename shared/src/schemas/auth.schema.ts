@@ -32,5 +32,19 @@ export const loginInputSchema = z.strictObject({
   password: z.string().min(1, 'Must not be empty').max(1024),
 });
 
+/** Profile edit: both fields are sent (the form always has them). */
+export const profileUpdateSchema = z.strictObject({
+  name: requiredText(LIMITS.NAME_MAX),
+  email: emailSchema,
+});
+
+/** The current password is only compared, so it gets the loose login rules. */
+export const passwordChangeSchema = z.strictObject({
+  currentPassword: z.string().min(1, 'Must not be empty').max(1024),
+  newPassword: passwordSchema,
+});
+
 export type RegisterInput = z.infer<typeof registerInputSchema>;
 export type LoginInput = z.infer<typeof loginInputSchema>;
+export type ProfileUpdate = z.infer<typeof profileUpdateSchema>;
+export type PasswordChange = z.infer<typeof passwordChangeSchema>;

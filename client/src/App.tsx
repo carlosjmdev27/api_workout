@@ -9,6 +9,7 @@ import { LoginPage } from './features/auth/pages/LoginPage';
 import { RegisterPage } from './features/auth/pages/RegisterPage';
 import { LoadingState } from './components/StatusViews';
 import { SessionSummaryPage } from './features/history/pages/SessionSummaryPage';
+import { ProfilePage } from './features/profile/pages/ProfilePage';
 import { RoutineCreatePage } from './features/routines/pages/RoutineCreatePage';
 import { RoutineDetailPage } from './features/routines/pages/RoutineDetailPage';
 import { RoutineEditPage } from './features/routines/pages/RoutineEditPage';
@@ -51,6 +52,7 @@ function App(): JSX.Element {
                 element={<Suspense fallback={<LoadingState label="Cargando historial…" />}><HistoryPage /></Suspense>}
               />
               <Route path="sessions/:sessionId" element={<SessionSummaryPage />} />
+              <Route path="profile" element={<ProfilePage />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Route>

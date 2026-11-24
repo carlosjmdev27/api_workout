@@ -14,6 +14,14 @@ export class AppError extends Error {
   }
 }
 
+/** The request is understood but a value in it is wrong (e.g. the current password). */
+export class BadRequestError extends AppError {
+  constructor(code: string, message: string) {
+    super(400, code, message);
+    this.name = 'BadRequestError';
+  }
+}
+
 /** Missing, invalid or expired credentials / token. */
 export class UnauthorizedError extends AppError {
   constructor(code: string, message: string) {

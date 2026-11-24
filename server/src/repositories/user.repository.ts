@@ -28,4 +28,11 @@ export interface UserRepository {
    * Returns null when the email is already registered.
    */
   create(record: NewUserRecord): Promise<CreatedUser | null>;
+  /**
+   * Updates name and (already normalized) email. Returns undefined if the user does not
+   * exist and null when the email belongs to another account (UNIQUE, checked atomically).
+   */
+  updateProfile(id: string, data: { name: string; email: string }): Promise<User | null | undefined>;
+  findPasswordHash(id: string): Promise<string | null>;
+  updatePasswordHash(id: string, passwordHash: string): Promise<boolean>;
 }

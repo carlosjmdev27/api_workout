@@ -42,6 +42,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Fase 14 de la spec (scroll y viewport móvil con 100dvh):** ✅ Completada (2026-11-24).
 
+**Fase 15 de la spec (vista de perfil: datos personales y contraseña):** ✅ Completada (2026-11-24).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -51,7 +53,7 @@ Revisar esta lista al empezar cada tarea.
 | 1 | ~~Unificar tipos y límites duplicados~~ | ✅ **Resuelto** (2026-11-19). `client` y `server` usan `@gym/shared`; ya no queda ningún archivo duplicado. | Fase 3 |
 | 2 | **Rate limiting** en la API. 🟡 **Parcial** (2026-11-20): login y registro ya están limitados (10 intentos / 15 min por IP). Falta un límite general para el resto de endpoints autenticados. | Media antes de exponer la API fuera de local | Fase 2 |
 | 9 | **HTTPS** antes de exponer la app fuera de la red local. El token viaja en cada petición: sin TLS se podría capturar. | Alta antes de exponerla | Fase 9 |
-| 10 | **Gestión de la cuenta**: cambiar la contraseña, recuperarla y cerrar sesión en todos los dispositivos (hoy un token vale 7 días o hasta cambiar `JWT_SECRET`). | Media | Fase 9 |
+| 10 | **Gestión de la cuenta.** 🟡 **Parcial** (2026-11-24): ya se pueden cambiar el nombre, el email y la contraseña (`/profile`). **Faltan:** recuperar la contraseña olvidada y **cerrar las demás sesiones al cambiar la contraseña** (hoy los tokens ya emitidos siguen valiendo hasta 7 días; habría que añadir una versión del token en `users`). | Media | Fase 9 |
 | 3 | **Tests automatizados** en el repo. Hasta ahora las pruebas han sido scripts temporales. | Media | Fase 2 |
 | 5 | **Privacidad de los `.md` de la raíz** (detalle abajo). Decisión aplazada por el usuario el 2026-11-19. | Media: decidir antes de añadir información sensible a la documentación | Fase 4 v2 |
 | 6 | **Gestionar los ejercicios propios del catálogo** (renombrar, cambiar el grupo muscular, borrar). Hoy un ejercicio mal clasificado queda así para siempre. | Media | v4 |
@@ -1608,3 +1610,64 @@ Hecho con la CLI de Railway (v5.75.0), con la sesión del usuario.
 | **Scroll normal en vistas largas** | ✅ Tabla con 8 ejercicios: 1617 px de scroll con la cabecera fija arriba. Entrenamiento: se desplaza, la barra del cronómetro se mantiene a 56 px y el último ejercicio queda por encima del botón "Terminar entrenamiento" |
 
 **Limitación del test:** Chrome en modo headless no simula la barra de direcciones que aparece y desaparece. Por eso se verificó que la regla aplicada es `100dvh` y que no sobra ni un píxel. La prueba definitiva es abrir la app en el móvil.
+
+---
+
+## 2026-11-24 · Fase 15: vista de perfil (`/profile`)
+
+### Backend
+
+| Endpoint (protegido) | Comportamiento |
+|----------------------|----------------|
+| `PUT /api/auth/profile` `{ name, email }` | Valida con `profileUpdateSchema` (estricto, email recortado y en minúsculas). Devuelve `{ id, name, email, createdAt }`. **Email de otra cuenta → 409 `EMAIL_IN_USE`**: lo detecta el índice `UNIQUE` de `users.email` en el propio `UPDATE`, así que no hay carrera entre comprobar y guardar. Mantener tu propio email es válido. |
+| `PUT /api/auth/password` `{ currentPassword, newPassword }` | Comprueba la contraseña actual con `bcrypt.compare` (bcryptjs). Si es incorrecta → **400 `INVALID_CURRENT_PASSWORD`** ("La contraseña actual es incorrecta"). La nueva cumple las reglas del registro (≥ 8 caracteres, ≤ 72 bytes) y se guarda con un hash nuevo (coste 12). Responde 204. |
+
+- **400 y no 401** para la contraseña actual incorrecta: el cliente interpreta cualquier 401 con token como "sesión caducada" y cerraría la sesión.
+- **Límite de intentos en el cambio de contraseña:** como en el login, 10 fallos cada 15 minutos por IP (429). Así, una sesión robada no puede probar contraseñas actuales sin límite.
+- **Nuevos:**
+  - en el repositorio: `updateProfile`, `findPasswordHash` y `updatePasswordHash`;
+  - en el servicio: `AuthService.updateProfile` y `AuthService.changePassword`;
+  - `BadRequestError` (400);
+  - esquemas compartidos `profileUpdateSchema` y `passwordChangeSchema`.
+
+### Frontend
+
+- **Cabecera:** el nombre del usuario pasa a ser un enlace (`NavLink`) a `/profile`, resaltado y con `aria-current="page"` mientras se está allí. En el móvil solo se ve el icono; el nombre sigue disponible para lectores de pantalla.
+- **`/profile`** (`features/profile/`, con `Card` de shadcn y compatible con los dos temas y con `100dvh`):
+  - "← My Workouts" para volver.
+  - **Datos personales:** "Miembro desde…" (solo lectura), nombre y email. "Guardar cambios" queda desactivado si no hay cambios. Al guardar se muestra "Datos guardados." y **`AuthContext.updateUser`** actualiza el usuario global: la cabecera cambia al instante, sin cerrar sesión.
+  - **Seguridad:** contraseña actual, nueva y confirmación. Debajo, una **lista en vivo** ("Al menos 8 caracteres", "Las dos contraseñas coinciden") con iconos y texto para lectores de pantalla. El botón se activa cuando todo se cumple. Tras guardar con éxito, **los campos se vacían**.
+  - **"Cerrar sesión"** al final de la página, cómodo en el móvil.
+- **Otros cambios:**
+  - `Alert` admite `tone="success"` (`role="status"`).
+  - Nuevo hook `useLogout`, que usan la cabecera y el perfil.
+  - El mensaje de `EMAIL_IN_USE` pasa a ser neutro (sirve para el registro y para el perfil).
+
+### Fallo real encontrado y corregido (existía desde la Fase 9)
+
+- Tras **"Salir"** y volver a entrar, la app llevaba a la página donde se cerró la sesión (p. ej. `/profile`) en lugar de a la portada. Al cerrar la sesión, la ruta protegida redirigía a `/login` recordando esa página, igual que cuando caduca la sesión.
+- Ahora el estado distingue `loggedOut` (cierre voluntario: se empieza en la portada) de `expired` (caducada: se vuelve a la página donde se estaba).
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` y `npm audit` | ✅ / 0 vulnerabilidades |
+| API (18 comprobaciones) | ✅ 401 sin token; nombre y email normalizados; sin hash en la respuesta; `/me` actualizado; 409 con el email de otra cuenta; 200 con el propio; 400 con un email inválido o un campo extra; login con el email nuevo; la otra cuenta intacta; 400 con la contraseña actual errónea **y la sesión sigue válida**; 400 con una nueva demasiado corta; 204; **la contraseña antigua deja de servir** y la nueva funciona; 429 tras 10 fallos sin afectar al resto de la API |
+| Interfaz con Edge vía CDP (10 flujos) | ✅ Detalle debajo |
+| Capturas | Perfil en oscuro (móvil) y en claro (escritorio, con error de validación) |
+
+**Qué cubren los flujos de interfaz:**
+- El enlace de la cabecera lleva a `/profile` y queda activo.
+- Datos precargados y botón de guardar desactivado.
+- **Guardar el nombre lo cambia al instante en la cabecera**, y se mantiene al recargar.
+- La lista en vivo y el botón de la contraseña.
+- Contraseña actual errónea: error y la sesión sigue abierta.
+- Cambio correcto: los campos quedan vacíos.
+- "Cerrar sesión" lleva a `/login`.
+- Login con la contraseña nueva, que lleva a la portada.
+- Sin errores de ejecución.
+
+**Incidencias del test:**
+1. La primera pasada de interfaz recibió "Demasiados intentos": el test de la API, lanzado justo antes desde la misma IP, había agotado los 10 intentos. Es el comportamiento correcto. Se reinició la API de prueba (el contador está en memoria).
+2. Aparecieron 3 errores "Uncaught" en una pasada en la que se habían editado archivos de sesión con la página abierta (recarga en caliente de Vite). No se repiten en una sesión limpia.

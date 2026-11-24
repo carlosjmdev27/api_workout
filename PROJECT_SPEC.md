@@ -520,3 +520,37 @@ Eliminar el desplazamiento innecesario, los espacios muertos inferiores y el efe
    - Revisar que ningún contenedor padre, `footer` o padding inferior (`pb-*`) añada altura extra innecesaria que fuerce el scroll en vistas cortas (Login, Dashboard vacío o con pocas rutinas).
 3. **Scroll Condicional por Contenedor**:
    - Estructurar el layout principal con Flexbox vertical (`flex flex-col min-h-[100dvh]`): cabecera fija en la parte superior y área principal (`main`) con `flex-1` que solo genere scroll vertical (`overflow-y-auto`) cuando el contenido interno realmente desborde el alto disponible.
+
+---
+
+## 👤 Fase 15: Vista de Perfil y Gestión de Datos de Usuario
+
+### 1. Objetivo
+Permitir que el usuario autenticado acceda a una vista dedicada (`/profile`) al pulsar sobre su icono o avatar en la cabecera (`Navbar`) para consultar y actualizar su información personal (nombre, correo electrónico) y cambiar su contraseña de forma segura.
+
+### 2. Cambios en el Backend (Node.js / Express)
+1. **Endpoints Protegidos (`authenticateToken`)**:
+   - **`PUT /api/auth/profile`** (o `PATCH /api/users/me`):
+     - Permite actualizar `name` y `email` del usuario autenticado (`req.user.id`).
+     - Normalizar el `email` en minúsculas y validar formato válido.
+     - Comprobar que el nuevo `email` no esté ya registrado por otro usuario distinto (si existe, devolver `409 Conflict` con mensaje claro).
+     - Devolver el objeto `user` actualizado (`id`, `name`, `email`, `created_at`).
+   - **`PUT /api/auth/password`**:
+     - Recibe `{ currentPassword, newPassword }`.
+     - Verifica que `currentPassword` coincida con el `password_hash` actual en SQLite mediante `bcrypt.compare` (si falla, devolver `401` o `400` con `"La contraseña actual es incorrecta"`).
+     - Valida que `newPassword` tenga al menos 8 caracteres, genera el nuevo hash con `bcryptjs` (10-12 rounds) y actualiza el registro en la base de datos.
+
+### 3. Cambios en el Frontend (React + shadcn/ui + Lucide)
+1. **Navegación desde la Cabecera (`Navbar`)**:
+   - Hacer clicable el icono/botón de usuario en la barra superior para navegar a `/profile` (mostrando estado activo si ya está en dicha ruta y un botón claro para volver atrás a `My Workouts`).
+2. **Vista de Perfil (`/profile`)**:
+   - **Diseño limpio y compacto** compatible con el tema Oscuro/Claro (Fase 13) y el control de viewport móvil `100dvh` (Fase 14).
+   - **Tarjeta 1 — Datos Personales**:
+     - Muestra la fecha de creación de la cuenta (solo lectura) y un formulario editable con **Nombre de usuario** y **Correo electrónico**.
+     - Botón `"Guardar cambios"` con estado de carga y notificación visual (*toast* o alerta sutil de éxito/error).
+     - Al guardar con éxito, actualizar inmediatamente el estado global `user` en `AuthContext` para que el nuevo nombre se refleje al instante en toda la app sin necesidad de cerrar sesión.
+   - **Tarjeta 2 — Seguridad (Cambio de Contraseña)**:
+     - Formulario independiente con campos para **Contraseña actual**, **Nueva contraseña** y **Confirmar nueva contraseña** (con validación visual de coincidencia y longitud mínima de 8 caracteres antes de enviar).
+     - Limpiar los campos automáticamente tras actualizarla con éxito.
+   - **Acción de Sesión**:
+     - Mantener accesible un botón discreto de **Cerrar sesión** en la parte inferior de la vista (además de la cabecera si aplica) para comodidad en móvil.

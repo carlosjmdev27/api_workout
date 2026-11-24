@@ -108,3 +108,9 @@ export async function requestVoid(method: HttpMethod, path: string): Promise<voi
   const response = await send(method, path);
   if (!response.ok) throw await toApiError(response);
 }
+
+/** 204 No Content endpoints that take a JSON body (e.g. change password). */
+export async function requestVoidWithBody(method: HttpMethod, path: string, body: unknown): Promise<void> {
+  const response = await send(method, path, body);
+  if (!response.ok) throw await toApiError(response);
+}

@@ -3,8 +3,11 @@ import type { LoginInput, RegisterInput, User } from '@gym/shared';
 
 export type AuthState =
   | { status: 'checking' }
-  /** `expired`: the API rejected the token, so the login page can explain why. */
-  | { status: 'anonymous'; expired?: boolean }
+  /**
+   * `expired`: the API rejected the token, so the login page can explain why.
+   * `loggedOut`: the user chose to leave, so the next login starts at home, not where they were.
+   */
+  | { status: 'anonymous'; expired?: boolean; loggedOut?: boolean }
   | { status: 'authenticated'; user: User }
   /** A token exists but the API could not be reached to validate it. */
   | { status: 'offline' };
@@ -14,6 +17,8 @@ export interface AuthContextValue {
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => void;
+  /** Replaces the logged-in user (after editing the profile): the header updates at once. */
+  updateUser: (user: User) => void;
   /** Validates the stored token again (after being offline). */
   recheck: () => void;
 }

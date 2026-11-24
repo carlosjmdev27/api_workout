@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
-import type { LoginInput, RegisterInput } from '@gym/shared';
+import type { LoginInput, PasswordChange, ProfileUpdate, RegisterInput } from '@gym/shared';
 import { userIdOf } from '../middlewares/auth.middleware.js';
 import type { AuthService } from '../services/auth.service.js';
-import { sendSuccess } from './response.js';
+import { sendNoContent, sendSuccess } from './response.js';
 
 type BodyRequest<T> = Request<Record<string, string>, unknown, T>;
 
@@ -24,5 +24,14 @@ export class AuthController {
 
   me = async (req: Request, res: Response): Promise<void> => {
     sendSuccess(res, 200, await this.service.me(userIdOf(req)));
+  };
+
+  updateProfile = async (req: BodyRequest<ProfileUpdate>, res: Response): Promise<void> => {
+    sendSuccess(res, 200, await this.service.updateProfile(userIdOf(req), req.body));
+  };
+
+  changePassword = async (req: BodyRequest<PasswordChange>, res: Response): Promise<void> => {
+    await this.service.changePassword(userIdOf(req), req.body);
+    sendNoContent(res);
   };
 }

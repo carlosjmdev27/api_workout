@@ -18,7 +18,8 @@ export function ProtectedRoute(): JSX.Element {
     return <ErrorState message="No se pudo conectar con el servidor para comprobar tu sesión." onRetry={recheck} />;
   }
   if (state.status === 'anonymous') {
-    const redirect: LoginRedirectState = { from: `${location.pathname}${location.search}` };
+    // Expired session / deep link: come back here after login. Explicit logout: start fresh.
+    const redirect: LoginRedirectState | undefined = state.loggedOut ? undefined : { from: `${location.pathname}${location.search}` };
     return <Navigate to="/login" replace state={redirect} />;
   }
   return <Outlet />;

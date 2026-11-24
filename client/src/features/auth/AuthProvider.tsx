@@ -66,8 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       logout: () => {
         clearToken();
         queryClient.clear();
-        setState({ status: 'anonymous' });
+        setState({ status: 'anonymous', loggedOut: true });
       },
+      updateUser: (user) => setState((current) => (current.status === 'authenticated' ? { status: 'authenticated', user } : current)),
     }),
     [state, recheck, start, queryClient],
   );

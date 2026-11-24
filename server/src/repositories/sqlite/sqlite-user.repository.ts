@@ -27,6 +27,8 @@ export class SqliteUserRepository implements UserRepository {
     insert: Statement<UserRow>;
     count: Statement<[], { n: number }>;
     claim: Statement<[string]>[];
+    updateProfile: Statement<{ id: string; name: string; email: string }>;
+    updateHash: Statement<{ id: string; hash: string }>;
   };
 
   constructor(db: Database) {
@@ -41,6 +43,9 @@ export class SqliteUserRepository implements UserRepository {
         db.prepare('UPDATE workout_sessions SET user_id = ? WHERE user_id IS NULL'),
         db.prepare('UPDATE exercise_catalog SET user_id = ? WHERE is_custom = 1 AND user_id IS NULL'),
       ],
+      // The UNIQUE index on users.email rejects an email taken by another account atomically.
+      updateProfile: db.prepare('UPDATE users SET name = @name, email = @email WHERE id = @id'),
+      updateHash: db.prepare('UPDATE users SET password_hash = @hash WHERE id = @id'),
     };
   }
 
@@ -52,6 +57,24 @@ export class SqliteUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
     const row = this.stmt.findById.get(id);
     return row ? toUser(row) : null;
+  }
+
+  async updateProfile(id: string, data: { name: string; email: string }): Promise<User | null | undefined> {
+    try {
+      if (this.stmt.updateProfile.run({ id, ...data }).changes === 0) return undefined;
+    } catch (error) {
+      if (isUniqueViolation(error)) return null;
+      throw error;
+    }
+    return (await this.findById(id)) ?? undefined;
+  }
+
+  async findPasswordHash(id: string): Promise<string | null> {
+    return this.stmt.findById.get(id)?.password_hash ?? null;
+  }
+
+  async updatePasswordHash(id: string, passwordHash: string): Promise<boolean> {
+    return this.stmt.updateHash.run({ id, hash: passwordHash }).changes > 0;
   }
 
   async create(record: NewUserRecord): Promise<CreatedUser | null> {
