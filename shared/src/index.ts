@@ -1,6 +1,7 @@
 // Single source of truth for the API contract (PROJECT_DOC pending #1, resolved).
 export { LIMITS } from './limits.js';
 export { SET_TYPES, isSetType, type SetType } from './set-types.js';
+export { DEFAULT_WEIGHT_UNIT, WEIGHT_UNITS, isWeightUnit, type WeightUnit } from './weight-units.js';
 export {
   EQUIPMENT,
   MUSCLE_GROUPS,

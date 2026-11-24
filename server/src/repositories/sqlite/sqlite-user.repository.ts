@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Database, Statement } from 'better-sqlite3';
-import type { User } from '@gym/shared';
-import type { CreatedUser, NewUserRecord, UserRepository, UserWithHash } from '../user.repository.js';
+import { DEFAULT_WEIGHT_UNIT, isWeightUnit, type User } from '@gym/shared';
+import type { CreatedUser, NewUserRecord, ProfileData, UserRepository, UserWithHash } from '../user.repository.js';
 
 interface UserRow {
   id: string;
@@ -9,11 +9,21 @@ interface UserRow {
   password_hash: string;
   name: string;
   created_at: string;
+  body_weight: number | null;
+  weight_unit: string;
 }
 
-const COLS = 'id, email, password_hash, name, created_at';
+const COLS = 'id, email, password_hash, name, created_at, body_weight, weight_unit';
 
-const toUser = (row: UserRow): User => ({ id: row.id, email: row.email, name: row.name, createdAt: row.created_at });
+const toUser = (row: UserRow): User => ({
+  id: row.id,
+  email: row.email,
+  name: row.name,
+  createdAt: row.created_at,
+  bodyWeight: row.body_weight,
+  // The column CHECK only allows 'kg' / 'lb'; the guard keeps the type honest.
+  weightUnit: isWeightUnit(row.weight_unit) ? row.weight_unit : DEFAULT_WEIGHT_UNIT,
+});
 
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE';
@@ -27,7 +37,7 @@ export class SqliteUserRepository implements UserRepository {
     insert: Statement<UserRow>;
     count: Statement<[], { n: number }>;
     claim: Statement<[string]>[];
-    updateProfile: Statement<{ id: string; name: string; email: string }>;
+    updateProfile: Statement<ProfileData & { id: string }>;
     updateHash: Statement<{ id: string; hash: string }>;
   };
 
@@ -36,7 +46,7 @@ export class SqliteUserRepository implements UserRepository {
     this.stmt = {
       findByEmail: db.prepare(`SELECT ${COLS} FROM users WHERE email = ?`),
       findById: db.prepare(`SELECT ${COLS} FROM users WHERE id = ?`),
-      insert: db.prepare(`INSERT INTO users (${COLS}) VALUES (@id, @email, @password_hash, @name, @created_at)`),
+      insert: db.prepare(`INSERT INTO users (${COLS}) VALUES (@id, @email, @password_hash, @name, @created_at, @body_weight, @weight_unit)`),
       count: db.prepare('SELECT COUNT(*) AS n FROM users'),
       claim: [
         db.prepare('UPDATE routines SET user_id = ? WHERE user_id IS NULL'),
@@ -44,7 +54,9 @@ export class SqliteUserRepository implements UserRepository {
         db.prepare('UPDATE exercise_catalog SET user_id = ? WHERE is_custom = 1 AND user_id IS NULL'),
       ],
       // The UNIQUE index on users.email rejects an email taken by another account atomically.
-      updateProfile: db.prepare('UPDATE users SET name = @name, email = @email WHERE id = @id'),
+      updateProfile: db.prepare(
+        'UPDATE users SET name = @name, email = @email, body_weight = @bodyWeight, weight_unit = @weightUnit WHERE id = @id',
+      ),
       updateHash: db.prepare('UPDATE users SET password_hash = @hash WHERE id = @id'),
     };
   }
@@ -59,7 +71,7 @@ export class SqliteUserRepository implements UserRepository {
     return row ? toUser(row) : null;
   }
 
-  async updateProfile(id: string, data: { name: string; email: string }): Promise<User | null | undefined> {
+  async updateProfile(id: string, data: ProfileData): Promise<User | null | undefined> {
     try {
       if (this.stmt.updateProfile.run({ id, ...data }).changes === 0) return undefined;
     } catch (error) {
@@ -84,6 +96,8 @@ export class SqliteUserRepository implements UserRepository {
       password_hash: record.passwordHash,
       name: record.name,
       created_at: new Date().toISOString(),
+      body_weight: null,
+      weight_unit: DEFAULT_WEIGHT_UNIT,
     };
     try {
       // One transaction: two simultaneous first registrations cannot both claim the data.

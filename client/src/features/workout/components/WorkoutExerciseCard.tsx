@@ -4,6 +4,7 @@ import { NotePanel, NoteToggleButton } from '../../../components/NoteToggle';
 import { MuscleBadge } from '../../catalog/components/MuscleBadge';
 import type { WorkoutGroup } from '../workout-model';
 import type { WorkoutSessionState } from '../useWorkoutSession';
+import { useWeightUnit } from '../../auth/useWeightUnit';
 import { WorkoutSetRow } from './WorkoutSetRow';
 
 interface WorkoutExerciseCardProps {
@@ -18,6 +19,7 @@ const FOOT_BUTTON =
 export function WorkoutExerciseCard({ group, session }: WorkoutExerciseCardProps): JSX.Element {
   const { exercise, rows, canAddExtra } = group;
   const [notesOpen, setNotesOpen] = useState(false);
+  const unit = useWeightUnit();
   const notesId = useId();
   const done = rows.filter((row) => session.entryOf(row.key).completed).length;
   const lastRow = rows.at(-1);
@@ -55,7 +57,7 @@ export function WorkoutExerciseCard({ group, session }: WorkoutExerciseCardProps
             <th scope="col" className={`${HEAD} pl-1`}>Serie</th>
             <th scope="col" className={HEAD}>Tipo</th>
             <th scope="col" className={HEAD}>Anterior</th>
-            <th scope="col" className={HEAD}>Peso (kg)</th>
+            <th scope="col" className={HEAD}>Peso ({unit})</th>
             <th scope="col" className={HEAD}>Reps</th>
             <th scope="col" className={`${HEAD} text-center`}><span aria-hidden="true">✓</span><span className="sr-only">Hecha</span></th>
           </tr>

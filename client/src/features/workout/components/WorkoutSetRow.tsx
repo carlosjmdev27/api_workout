@@ -2,6 +2,7 @@ import { useRef, type JSX, type RefObject } from 'react';
 import { Check } from 'lucide-react';
 import type { FieldErrors } from '../../../utils/validation';
 import { formatNumber, formatRepRange } from '../../../utils/format';
+import { useWeightUnit } from '../../auth/useWeightUnit';
 import { SetTypeBadge } from '../../exercises/components/SetTypeBadge';
 import { SET_TYPE_LABELS } from '../../exercises/set-type-styles';
 import type { RowEntry } from '../active-workout';
@@ -67,10 +68,11 @@ interface WorkoutSetRowProps {
 /** One set as a dense table row: Serie | Tipo | Anterior | Peso | Reps | ✓ (+ error line). */
 export function WorkoutSetRow({ row, exerciseName, entry, errors, onValue, onToggle }: WorkoutSetRowProps): JSX.Element {
   const repsRef = useRef<HTMLInputElement>(null);
+  const unit = useWeightUnit();
   const range = formatRepRange(row.targetRepMin, row.targetRepMax);
   const of = `de la serie ${row.setNumber} de ${exerciseName}`;
   const errorText = errors?.actualReps ?? errors?.actualWeight;
-  const weightHint = row.targetWeight === null ? 'Sin peso objetivo' : `Objetivo: ${formatNumber(row.targetWeight)} kg`;
+  const weightHint = row.targetWeight === null ? 'Sin peso objetivo' : `Objetivo: ${formatNumber(row.targetWeight)} ${unit}`;
 
   const handleToggle = (): void => {
     if (!onToggle()) repsRef.current?.focus(); // Reps missing: take the user straight there.
@@ -89,7 +91,7 @@ export function WorkoutSetRow({ row, exerciseName, entry, errors, onValue, onTog
         <td className="py-1"><SetTypeBadge type={row.setType} compact /></td>
         <td className="truncate py-1 text-xs tabular-nums"><PreviousCell row={row} /></td>
         <td className="py-1 pr-1">
-          <CellInput label={`Peso ${of} (kg)`} decimal value={entry.weight} placeholder="—" error={errors?.actualWeight} hint={weightHint} onChange={(v) => onValue('weight', v)} />
+          <CellInput label={`Peso ${of} (${unit})`} decimal value={entry.weight} placeholder="—" error={errors?.actualWeight} hint={weightHint} onChange={(v) => onValue('weight', v)} />
         </td>
         <td className="py-1 pr-1">
           <CellInput label={`Reps ${of} (objetivo ${range})`} value={entry.reps} placeholder={range} error={errors?.actualReps} hint={`Objetivo: ${range} reps`} inputRef={repsRef} onChange={(v) => onValue('reps', v)} />

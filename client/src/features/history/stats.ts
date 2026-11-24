@@ -6,7 +6,7 @@ const isDone = (set: LoggedSet): boolean => set.completed && set.actualReps !== 
 export interface SessionTotals {
   completedSets: number;
   totalReps: number;
-  /** Weight moved: Σ weight × reps of completed sets (kg). */
+  /** Weight moved: Σ weight × reps of completed sets (user's unit). */
   volume: number;
 }
 
@@ -48,7 +48,7 @@ export interface BestSet {
 
 /**
  * Real data only: more weight wins; with the same weight, more reps.
- * Sets without weight (bodyweight) count as 0 kg, so they compare by reps.
+ * Sets without weight (bodyweight) count as 0, so they compare by reps.
  */
 export function isBetterSet(candidate: BestSet, other: BestSet): boolean {
   const [a, b] = [candidate.weight ?? 0, other.weight ?? 0];

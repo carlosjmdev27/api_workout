@@ -9,7 +9,41 @@ const SET_TYPE_CHECK = `'warmup', 'normal', 'topset', 'backoff', 'restpause', 'd
  * PRAGMA user_version; never edit an applied migration, append a new one.
  * Columns named `position` map to the domain field `order` (reserved word in SQL).
  */
-type Migration = string | { sql: string; disableForeignKeys: true };
+type Migration =
+  | string
+  | { sql: string; disableForeignKeys: true }
+  /** Code step, for changes that must inspect the current schema first. */
+  | { run: (db: Database) => void };
+
+/** Column names of a table, read with PRAGMA table_info (the table name is internal). */
+function columnNames(db: Database, table: string): Set<string> {
+  const rows: unknown = db.pragma(`table_info(${table})`);
+  const names = new Set<string>();
+  if (Array.isArray(rows)) {
+    for (const row of rows) {
+      if (typeof row === 'object' && row !== null && 'name' in row && typeof row.name === 'string') names.add(row.name);
+    }
+  }
+  return names;
+}
+
+/**
+ * v6 — body weight + preferred weight unit. Only ADD COLUMN (existing rows are kept,
+ * weight_unit gets 'kg'), and each column is added only if PRAGMA table_info does not
+ * list it yet, so the step is safe even on a database that already has them.
+ * Limits are frozen copies (20-500, 'kg'/'lb'): an applied migration must never change.
+ */
+function addUserPreferences(db: Database): void {
+  const existing = columnNames(db, 'users');
+  if (!existing.has('body_weight')) {
+    db.exec(`ALTER TABLE users ADD COLUMN body_weight REAL
+      CHECK (body_weight IS NULL OR (body_weight >= 20 AND body_weight <= 500))`);
+  }
+  if (!existing.has('weight_unit')) {
+    db.exec(`ALTER TABLE users ADD COLUMN weight_unit TEXT NOT NULL DEFAULT 'kg'
+      CHECK (weight_unit IN ('kg', 'lb'))`);
+  }
+}
 
 const MIGRATIONS: readonly Migration[] = [
   // v1 — flat model (Routine -> Exercise). Superseded by v2.
@@ -167,6 +201,7 @@ const MIGRATIONS: readonly Migration[] = [
   CREATE UNIQUE INDEX ux_catalog_custom_name ON exercise_catalog (user_id, name_normalized) WHERE is_custom = 1;
   `,
   },
+  { run: addUserPreferences },
 ];
 
 function getSchemaVersion(db: Database): number {
@@ -175,9 +210,9 @@ function getSchemaVersion(db: Database): number {
 }
 
 /** Applies one migration and bumps user_version in the same transaction. */
-function applyMigration(db: Database, sql: string, targetVersion: number): void {
+function applyMigration(db: Database, step: (db: Database) => void, targetVersion: number): void {
   db.transaction(() => {
-    db.exec(sql);
+    step(db);
     const violations: unknown = db.pragma('foreign_key_check');
     if (Array.isArray(violations) && violations.length > 0) throw new Error(`Migration v${targetVersion} breaks foreign keys`);
     // PRAGMA does not accept bound parameters; targetVersion is an internal integer.
@@ -191,13 +226,14 @@ export function runMigrations(db: Database): void {
   MIGRATIONS.forEach((migration, index) => {
     const targetVersion = index + 1;
     if (targetVersion <= currentVersion) return;
-    const { sql, disableForeignKeys } = typeof migration === 'string' ? { sql: migration, disableForeignKeys: false } : migration;
+    const step = typeof migration === 'string' ? (d: Database) => d.exec(migration) : 'run' in migration ? migration.run : (d: Database) => d.exec(migration.sql);
+    const disableForeignKeys = typeof migration !== 'string' && 'disableForeignKeys' in migration;
 
     // Table rebuilds need FKs off (outside the transaction, as SQLite requires);
     // otherwise dropping the old table would cascade into its children.
     if (disableForeignKeys) db.pragma('foreign_keys = OFF');
     try {
-      applyMigration(db, sql, targetVersion);
+      applyMigration(db, step, targetVersion);
     } finally {
       if (disableForeignKeys) db.pragma('foreign_keys = ON');
     }

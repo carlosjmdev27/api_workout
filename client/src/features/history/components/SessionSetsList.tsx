@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { Check } from 'lucide-react';
 import type { LoggedSet } from '@gym/shared';
 import { formatWeight } from '../../../utils/format';
+import { useWeightUnit } from '../../auth/useWeightUnit';
 import { SetTypeBadge } from '../../exercises/components/SetTypeBadge';
 
 /** Logged sets grouped by exercise, in workout order. */
@@ -18,6 +19,7 @@ function groupByExercise(sets: LoggedSet[]): { key: string; name: string; sets: 
 
 /** Every set of a session: type, weight × reps and whether it was completed. */
 export function SessionSetsList({ sets }: { sets: LoggedSet[] }): JSX.Element {
+  const unit = useWeightUnit();
   return (
     <div className="space-y-3">
       {groupByExercise(sets).map((group) => (
@@ -28,7 +30,7 @@ export function SessionSetsList({ sets }: { sets: LoggedSet[] }): JSX.Element {
               <li key={set.id} className="flex items-center gap-2 tabular-nums">
                 <span className="w-5 text-muted-foreground">{set.setNumber}</span>
                 <SetTypeBadge type={set.setType} />
-                <span>{set.actualWeight === null ? 'sin peso' : formatWeight(set.actualWeight)} × {set.actualReps ?? '—'}</span>
+                <span>{set.actualWeight === null ? 'sin peso' : formatWeight(set.actualWeight, unit)} × {set.actualReps ?? '—'}</span>
                 {set.completed ? (
                   <Check className="h-4 w-4 text-primary" aria-label="completada" />
                 ) : (

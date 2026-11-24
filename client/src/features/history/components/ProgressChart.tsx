@@ -6,7 +6,7 @@ export interface ChartPoint {
   id: string;
   date: string; // ISO
   value: number;
-  detail: string; // Secondary tooltip line, e.g. "mejor serie 100 kg × 7"
+  detail: string; // Secondary tooltip line, e.g. "mejor serie 100 lb × 7"
 }
 
 interface ProgressChartProps {

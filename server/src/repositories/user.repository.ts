@@ -1,4 +1,7 @@
-import type { User } from '@gym/shared';
+import type { ProfileUpdate, User } from '@gym/shared';
+
+/** Editable account data (already validated and normalized). */
+export type ProfileData = ProfileUpdate;
 
 /** A user plus the hash, which never leaves the auth service. */
 export interface UserWithHash extends User {
@@ -29,10 +32,11 @@ export interface UserRepository {
    */
   create(record: NewUserRecord): Promise<CreatedUser | null>;
   /**
-   * Updates name and (already normalized) email. Returns undefined if the user does not
-   * exist and null when the email belongs to another account (UNIQUE, checked atomically).
+   * Updates name, (already normalized) email, body weight and weight unit. Returns undefined
+   * if the user does not exist and null when the email belongs to another account
+   * (UNIQUE, checked atomically).
    */
-  updateProfile(id: string, data: { name: string; email: string }): Promise<User | null | undefined>;
+  updateProfile(id: string, data: ProfileData): Promise<User | null | undefined>;
   findPasswordHash(id: string): Promise<string | null>;
   updatePasswordHash(id: string, passwordHash: string): Promise<boolean>;
 }

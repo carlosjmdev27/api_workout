@@ -1,5 +1,6 @@
 import type { Equipment, MuscleGroup } from '../catalog.js';
 import type { SetType } from '../set-types.js';
+import type { WeightUnit } from '../weight-units.js';
 
 /** Entry of the exercise catalog (base list or created by the user). */
 export interface CatalogExercise {
@@ -16,6 +17,10 @@ export interface User {
   email: string;
   name: string;
   createdAt: string;
+  /** Current body weight in `weightUnit`, or null if not set. */
+  bodyWeight: number | null;
+  /** Unit of every weight the user types and sees (no conversion of stored values). */
+  weightUnit: WeightUnit;
 }
 
 /** Answer of register / login. */

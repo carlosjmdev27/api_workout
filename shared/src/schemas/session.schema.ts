@@ -12,7 +12,7 @@ export const loggedSetInputSchema = z.strictObject({
   dayExerciseId: uuidSchema,
   setNumber: z.number().int().min(1).max(LIMITS.LOGGED_SET_NUMBER_MAX),
   setType: z.enum(SET_TYPES),
-  actualWeight: z.number().min(0).max(LIMITS.WEIGHT_MAX_KG).nullish(),
+  actualWeight: z.number().min(0).max(LIMITS.WEIGHT_MAX).nullish(),
   actualReps: z.number().int().min(0).max(LIMITS.REPS_MAX),
 });
 

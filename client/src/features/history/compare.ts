@@ -21,7 +21,7 @@ export interface ExerciseComparison {
   name: string;
   best: BestSet | null;
   previousBest: BestSet | null;
-  /** Heaviest weight today minus the previous session's (kg), when both have weight. */
+  /** Heaviest weight today minus the previous session's (user's unit), when both have weight. */
   weightDelta: number | null;
   /** Completed reps of this exercise today. */
   totalReps: number;

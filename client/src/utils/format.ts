@@ -38,8 +38,9 @@ export function formatClock(ms: number): string {
   return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
 }
 
-export function formatWeight(kg: number): string {
-  return `${numberFormat.format(kg)} kg`;
+/** 100 + 'lb' -> "100 lb". The unit is the user's preference (see useWeightUnit). */
+export function formatWeight(value: number, unit: string): string {
+  return `${numberFormat.format(value)} ${unit}`;
 }
 
 /** 8,8 -> "8"; 6,8 -> "6-8". */

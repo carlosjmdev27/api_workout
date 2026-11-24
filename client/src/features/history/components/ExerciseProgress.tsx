@@ -1,13 +1,14 @@
 import { useId, useState, type JSX } from 'react';
 import type { WorkoutSession } from '@gym/shared';
 import { formatShortDate, formatWeight, signedDelta } from '../../../utils/format';
+import { useWeightUnit } from '../../auth/useWeightUnit';
 import { exerciseOptions, exerciseProgress, type ProgressPoint } from '../stats';
 import { Card } from '@/components/ui/card';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { ProgressChart, type ChartPoint } from './ProgressChart';
 
-const bestSetText = (p: ProgressPoint): string =>
-  `${p.bestWeight === null ? 'sin peso' : formatWeight(p.bestWeight)} × ${p.bestReps}`;
+const bestSetText = (p: ProgressPoint, unit: string): string =>
+  `${p.bestWeight === null ? 'sin peso' : formatWeight(p.bestWeight, unit)} × ${p.bestReps}`;
 
 /** Change of the heaviest weight vs the previous session ("—" when either has no weight). */
 function delta(points: ProgressPoint[], index: number): string {
@@ -35,11 +36,11 @@ const METRICS: Record<Metric, { label: string; title: string; color: string; emp
   },
 };
 
-function toChartPoints(points: ProgressPoint[], metric: Metric): ChartPoint[] {
+function toChartPoints(points: ProgressPoint[], metric: Metric, unit: string): ChartPoint[] {
   return points.flatMap((p) => {
     const value = metric === 'weight' ? p.bestWeight : p.volume;
     if (value === null || value <= 0) return [];
-    const detail = metric === 'weight' ? `mejor serie ${bestSetText(p)}` : `${p.totalReps} reps en total`;
+    const detail = metric === 'weight' ? `mejor serie ${bestSetText(p, unit)}` : `${p.totalReps} reps en total`;
     return [{ id: p.sessionId, date: p.date, value, detail }];
   });
 }
@@ -66,6 +67,7 @@ function MetricToggle({ metric, onChange }: { metric: Metric; onChange: (metric:
 
 /** Per-exercise progressive overload: Recharts chart (max weight / volume) + chronological table (the table view). */
 export function ExerciseProgress({ sessions }: { sessions: WorkoutSession[] }): JSX.Element {
+  const unit = useWeightUnit();
   const options = exerciseOptions(sessions);
   const [selected, setSelected] = useState(options[0]?.key ?? '');
   const [metric, setMetric] = useState<Metric>('weight');
@@ -73,7 +75,7 @@ export function ExerciseProgress({ sessions }: { sessions: WorkoutSession[] }): 
   const key = options.some((o) => o.key === selected) ? selected : (options[0]?.key ?? '');
   const name = options.find((o) => o.key === key)?.name ?? '';
   const points = exerciseProgress(sessions, key);
-  const chartPoints = toChartPoints(points, metric);
+  const chartPoints = toChartPoints(points, metric, unit);
   const { title, color, empty } = METRICS[metric];
 
   return (
@@ -90,11 +92,11 @@ export function ExerciseProgress({ sessions }: { sessions: WorkoutSession[] }): 
 
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-medium text-foreground/90">{title} de {name} por sesión (kg)</h3>
+          <h3 className="text-sm font-medium text-foreground/90">{title} de {name} por sesión ({unit})</h3>
           <MetricToggle metric={metric} onChange={setMetric} />
         </div>
         {chartPoints.length > 0 ? (
-          <ProgressChart points={chartPoints} unit="kg" color={color} label={`${title} de ${name} por sesión`} />
+          <ProgressChart points={chartPoints} unit={unit} color={color} label={`${title} de ${name} por sesión`} />
         ) : (
           <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">{empty}</p>
         )}
@@ -118,10 +120,10 @@ export function ExerciseProgress({ sessions }: { sessions: WorkoutSession[] }): 
               return (
                 <tr key={p.sessionId}>
                   <td className="py-2 text-muted-foreground">{formatShortDate(p.date)}</td>
-                  <td className="py-2 font-semibold">{bestSetText(p)}</td>
+                  <td className="py-2 font-semibold">{bestSetText(p, unit)}</td>
                   <td className="py-2 text-right text-muted-foreground">{delta(points, index)}</td>
                   <td className="py-2 text-right">{p.totalReps}</td>
-                  <td className="py-2 text-right">{formatWeight(p.volume)}</td>
+                  <td className="py-2 text-right">{formatWeight(p.volume, unit)}</td>
                 </tr>
               );
             })}

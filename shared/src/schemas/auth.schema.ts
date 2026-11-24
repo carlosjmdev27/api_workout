@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { LIMITS } from '../limits.js';
+import { WEIGHT_UNITS } from '../weight-units.js';
 import { requiredText } from './common.schema.js';
 
 /** Emails are compared and stored trimmed and in lowercase. */
@@ -32,10 +33,19 @@ export const loginInputSchema = z.strictObject({
   password: z.string().min(1, 'Must not be empty').max(1024),
 });
 
-/** Profile edit: both fields are sent (the form always has them). */
+/** Body weight: a reasonable positive number, or null to clear it. */
+export const bodyWeightSchema = z
+  .number('Must be a number')
+  .min(LIMITS.BODY_WEIGHT_MIN, `Must be between ${LIMITS.BODY_WEIGHT_MIN} and ${LIMITS.BODY_WEIGHT_MAX}`)
+  .max(LIMITS.BODY_WEIGHT_MAX, `Must be between ${LIMITS.BODY_WEIGHT_MIN} and ${LIMITS.BODY_WEIGHT_MAX}`)
+  .nullable();
+
+/** Profile edit: every field is sent (the form always has them). */
 export const profileUpdateSchema = z.strictObject({
   name: requiredText(LIMITS.NAME_MAX),
   email: emailSchema,
+  bodyWeight: bodyWeightSchema,
+  weightUnit: z.enum(WEIGHT_UNITS, "Must be 'kg' or 'lb'"),
 });
 
 /** The current password is only compared, so it gets the loose login rules. */

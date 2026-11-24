@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { Plus } from 'lucide-react';
 import type { PlannedSet } from '@gym/shared';
 import { formatNumber, formatRepRange } from '../../../utils/format';
+import { useWeightUnit } from '../../auth/useWeightUnit';
 import { SetTypeBadge } from './SetTypeBadge';
 
 interface SetsTableProps {
@@ -16,13 +17,14 @@ const CELL = 'py-1 tabular-nums';
 
 /** Dense read-only view of the planned sets, with an optional "+ Añadir serie" footer row. */
 export function SetsTable({ sets, addLabel, addDisabled = false, onAddSet }: SetsTableProps): JSX.Element {
+  const unit = useWeightUnit();
   return (
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
           <th scope="col" className="w-12 py-1 font-medium">Serie</th>
           <th scope="col" className="py-1 font-medium">Tipo</th>
-          <th scope="col" className="py-1 text-right font-medium">Peso (kg)</th>
+          <th scope="col" className="py-1 text-right font-medium">Peso ({unit})</th>
           <th scope="col" className="py-1 text-right font-medium">Reps</th>
           <th scope="col" className="w-12 py-1 text-right font-medium">RIR</th>
         </tr>

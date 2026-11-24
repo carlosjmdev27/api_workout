@@ -46,7 +46,9 @@ export class AuthService {
     const found = await this.users.findByEmail(input.email);
     const ok = await this.passwords.matches(input.password, found?.passwordHash ?? null);
     if (!found || !ok) throw invalidCredentials();
-    return this.issue({ id: found.id, email: found.email, name: found.name, createdAt: found.createdAt });
+    // Explicit allowlist: the hash (or any future private column) never leaves this service.
+    const { id, email, name, createdAt, bodyWeight, weightUnit } = found;
+    return this.issue({ id, email, name, createdAt, bodyWeight, weightUnit });
   }
 
   /** Resolves a bearer token to an existing user (a deleted user's token is useless). */
@@ -63,9 +65,12 @@ export class AuthService {
     return user;
   }
 
-  /** Name + email (normalized by the schema). Another account's email -> 409. */
+  /**
+   * Name, email (normalized by the schema), body weight and unit. Another account's
+   * email -> 409. Changing the unit relabels weights; stored numbers are never converted.
+   */
   async updateProfile(userId: string, input: ProfileUpdate): Promise<User> {
-    const updated = await this.users.updateProfile(userId, { name: input.name, email: input.email });
+    const updated = await this.users.updateProfile(userId, input);
     if (updated === undefined) throw sessionExpired();
     if (updated === null) throw new ConflictError('EMAIL_IN_USE', 'An account with this email already exists');
     return updated;

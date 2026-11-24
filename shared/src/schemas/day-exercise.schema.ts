@@ -19,7 +19,7 @@ export const plannedSetInputSchema = z
     setType: z.enum(SET_TYPES),
     targetRepMin: z.number().int().min(1).max(LIMITS.REPS_MAX),
     targetRepMax: z.number().int().min(1).max(LIMITS.REPS_MAX),
-    targetWeight: z.number().min(0).max(LIMITS.WEIGHT_MAX_KG).nullish(),
+    targetWeight: z.number().min(0).max(LIMITS.WEIGHT_MAX).nullish(),
     targetRir: z.number().int().min(0).max(LIMITS.RIR_MAX).nullish(),
   })
   .refine((set) => set.targetRepMin <= set.targetRepMax, {

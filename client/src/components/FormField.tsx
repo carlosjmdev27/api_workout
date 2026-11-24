@@ -37,21 +37,37 @@ function FieldShell({ id, label, error, hint, required, children }: FieldShellPr
   );
 }
 
-type TextFieldProps = FieldMeta & InputHTMLAttributes<HTMLInputElement>;
+type TextFieldProps = FieldMeta &
+  InputHTMLAttributes<HTMLInputElement> & {
+    /** Short visual suffix inside the input (e.g. the unit "kg"); also add it to the label. */
+    suffix?: string;
+  };
 
 /** Labelled shadcn/ui Input; aria-invalid switches it to the error style. */
-export function TextField({ label, error, hint, required, className, ...inputProps }: TextFieldProps): JSX.Element {
+export function TextField({ label, error, hint, required, className, suffix, ...inputProps }: TextFieldProps): JSX.Element {
   const id = useId();
+  const input = (
+    <Input
+      id={id}
+      required={required}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={describedBy(id, { label, error, hint })}
+      className={`h-9 ${suffix ? 'pr-10' : ''} ${className ?? ''}`}
+      {...inputProps}
+    />
+  );
   return (
     <FieldShell id={id} label={label} error={error} hint={hint} required={required}>
-      <Input
-        id={id}
-        required={required}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy(id, { label, error, hint })}
-        className={`h-9 ${className ?? ''}`}
-        {...inputProps}
-      />
+      {suffix ? (
+        <div className="relative">
+          {input}
+          <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+            {suffix}
+          </span>
+        </div>
+      ) : (
+        input
+      )}
     </FieldShell>
   );
 }

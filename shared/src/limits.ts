@@ -9,8 +9,13 @@ export const LIMITS = {
   SETS_PER_EXERCISE_MAX: 20,
 
   REPS_MAX: 100,
-  WEIGHT_MAX_KG: 1000,
+  /** In the user's unit (kg or lb): 2000 leaves room for e.g. a heavy leg press in lb. */
+  WEIGHT_MAX: 2000,
   RIR_MAX: 10,
+
+  /** Body weight (profile), in the user's unit. */
+  BODY_WEIGHT_MIN: 20,
+  BODY_WEIGHT_MAX: 500,
 
   /** Planned sets + extra sets added on the fly during a workout. */
   LOGGED_SET_NUMBER_MAX: 30,

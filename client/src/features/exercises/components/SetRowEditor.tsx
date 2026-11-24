@@ -4,6 +4,7 @@ import type { SetType } from '@gym/shared';
 import { IconButton } from '../../../components/IconButton';
 import type { FieldErrors } from '../../../utils/validation';
 import type { SetNumberField, SetRowValues } from '../exercise-form';
+import { useWeightUnit } from '../../auth/useWeightUnit';
 import { SetTypeSelect } from './SetTypeSelect';
 
 /** Shared by the header and the rows so the columns line up. */
@@ -67,6 +68,7 @@ export function SetRowEditor({
   onRemove,
 }: SetRowEditorProps): JSX.Element {
   const number = index + 1;
+  const unit = useWeightUnit();
   const error = (field: SetNumberField): string | undefined => errors[`sets.${index}.${field}`];
   const rowErrors = (Object.keys(FIELD_NAMES) as SetNumberField[]).flatMap((field) => {
     const message = error(field);
@@ -87,7 +89,7 @@ export function SetRowEditor({
       <div className={SET_EDITOR_GRID}>
         <span className="text-center text-sm font-semibold text-muted-foreground">{number}</span>
         <SetTypeSelect value={row.setType} label={`Tipo de la serie ${number}`} compact onChange={onTypeChange} />
-        {cell('targetWeight', { decimal: true, placeholder: '—', label: `Peso de la serie ${number} (kg)` })}
+        {cell('targetWeight', { decimal: true, placeholder: '—', label: `Peso de la serie ${number} (${unit})` })}
         {cell('targetRepMin')}
         {cell('targetRepMax')}
         {cell('targetRir', { placeholder: '—' })}

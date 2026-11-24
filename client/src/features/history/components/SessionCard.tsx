@@ -4,6 +4,7 @@ import type { WorkoutSession } from '@gym/shared';
 import { IconButton } from '../../../components/IconButton';
 import { LinkButton } from '../../../components/LinkButton';
 import { formatDateTime, formatDuration, formatWeight } from '../../../utils/format';
+import { useWeightUnit } from '../../auth/useWeightUnit';
 import { sessionTotals } from '../stats';
 import { SessionSetsList } from './SessionSetsList';
 
@@ -24,6 +25,7 @@ interface SessionCardProps {
 /** One past session: summary metrics (always visible) + expandable logged sets. */
 export function SessionCard({ session, onDelete }: SessionCardProps): JSX.Element {
   const totals = sessionTotals(session);
+  const unit = useWeightUnit();
 
   return (
     <li className="rounded-2xl border border-border bg-card shadow-sm">
@@ -36,7 +38,7 @@ export function SessionCard({ session, onDelete }: SessionCardProps): JSX.Elemen
               <Metric label="Duración" value={session.durationSeconds === null ? '—' : formatDuration(session.durationSeconds)} />
               <Metric label="Series hechas" value={String(totals.completedSets)} />
               <Metric label="Reps totales" value={String(totals.totalReps)} />
-              <Metric label="Peso movido" value={formatWeight(totals.volume)} />
+              <Metric label="Peso movido" value={formatWeight(totals.volume, unit)} />
             </dl>
           </div>
         </summary>

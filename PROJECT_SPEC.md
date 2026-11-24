@@ -554,3 +554,30 @@ Permitir que el usuario autenticado acceda a una vista dedicada (`/profile`) al 
      - Limpiar los campos automáticamente tras actualizarla con éxito.
    - **Acción de Sesión**:
      - Mantener accesible un botón discreto de **Cerrar sesión** en la parte inferior de la vista (además de la cabecera si aplica) para comodidad en móvil.
+
+     ---
+
+## ⚖️ Fase 16: Preferencias Físicas y Unidad de Peso Global (`kg` / `lb`)
+
+### 1. Objetivo
+Ampliar la vista de perfil (`/profile`) para que el usuario pueda registrar su **peso corporal actual** y seleccionar su **unidad de peso preferida (`kg` o `lb`)**, propagando dicha unidad de forma global en todas las rutinas, entrenamientos activos y gráficas de progreso.
+
+### 2. Cambios en Base de Datos y Backend (SQLite + Express)
+1. **Migración Segura de la Tabla `users`**:
+   - Añadir las columnas `body_weight` (`REAL`, nullable) y `weight_unit` (`TEXT NOT NULL DEFAULT 'kg'`) mediante `ALTER TABLE` seguro al arrancar el servidor (verificando previamente con `PRAGMA table_info(users)` para evitar errores si ya existen y conservar intactos los datos actuales).
+2. **Actualización de Endpoints de Autenticación y Perfil**:
+   - Incluir `body_weight` y `weight_unit` en la respuesta del usuario autenticado (`GET /api/auth/me`, `POST /api/auth/login` y `PUT /api/auth/profile`).
+   - En **`PUT /api/auth/profile`**:
+     - Validar que `weight_unit` sea estrictamente `'kg'` o `'lb'`.
+     - Validar que `body_weight` (si no es nulo/vacío) sea un número positivo razonable (ej. entre `20` y `500`), guardando `null` si el campo se deja vacío.
+
+### 3. Cambios en el Frontend (React + shadcn/ui + AuthContext)
+1. **Formulario en `/profile` (Tarjeta de Datos Personales y Físicos)**:
+   - Añadir un campo numérico compacto para **Peso corporal** (`inputMode="decimal"`, con sufijo visual mostrando la unidad activa).
+   - Añadir un selector segmentado o `Select` de `shadcn/ui` para **Unidad preferida**: `Kilogramos (kg)` vs. `Libras (lb)`.
+   - Al guardar, actualizar el `AuthContext` para que el cambio surta efecto inmediato en toda la aplicación.
+2. **Propagación Global de la Unidad (`kg` / `lb`)**:
+   - Leer `user.weight_unit || 'kg'` desde `AuthContext` (con un helper reutilizable, ej. `useWeightUnit()`) y sustituir las etiquetas fijas `"kg"` por la unidad dinámica del usuario en:
+     - Encabezados de columnas y placeholders de peso en la tabla de rutinas y entrenamiento activo.
+     - Etiquetas y tooltips de las gráficas de progreso (`Recharts`) en el historial.
+   - *(Nota: Guardar los valores numéricos tal cual los introduce el usuario en la unidad activa sin conversiones automáticas destructivas sobre registros históricos previos).*

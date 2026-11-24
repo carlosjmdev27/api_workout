@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { LIMITS, SET_TYPES } from '@gym/shared';
 import type { ExerciseEditor } from '../useExerciseEditor';
 import { SET_TYPE_LABELS, SET_TYPE_SHORT } from '../set-type-styles';
+import { useWeightUnit } from '../../auth/useWeightUnit';
 import { SET_EDITOR_GRID, SetRowEditor } from './SetRowEditor';
 
 const HEAD = 'text-[11px] font-medium uppercase tracking-wide text-muted-foreground';
@@ -10,6 +11,7 @@ const HEAD = 'text-[11px] font-medium uppercase tracking-wide text-muted-foregro
 /** Editable planned sets: one column header, dense rows and a "+ Añadir serie" footer row. */
 export function SetRowsEditor({ editor }: { editor: ExerciseEditor }): JSX.Element {
   const { values, errors, canAddSet, canRemoveSet } = editor;
+  const unit = useWeightUnit();
 
   return (
     <fieldset>
@@ -21,7 +23,7 @@ export function SetRowsEditor({ editor }: { editor: ExerciseEditor }): JSX.Eleme
       <div className={`${SET_EDITOR_GRID} border-b border-border/60 pb-1`} aria-hidden="true">
         <span className={`${HEAD} text-center`}>#</span>
         <span className={HEAD}>Tipo</span>
-        <span className={`${HEAD} text-center`}>Kg</span>
+        <span className={`${HEAD} text-center`}>{unit}</span>
         <span className={`${HEAD} text-center`}>Mín</span>
         <span className={`${HEAD} text-center`}>Máx</span>
         <span className={`${HEAD} text-center`}>RIR</span>

@@ -87,7 +87,7 @@ export function completionErrors(entry: RowEntry): FieldErrors | null {
   const weight = parseDecimal(entry.weight);
   if (reps === null) errors.actualReps = 'Escribe las reps hechas';
   else if (!Number.isInteger(reps) || reps < 0 || reps > LIMITS.REPS_MAX) errors.actualReps = 'Reps no válidas';
-  if (weight !== null && (!Number.isFinite(weight) || weight < 0 || weight > LIMITS.WEIGHT_MAX_KG)) {
+  if (weight !== null && (!Number.isFinite(weight) || weight < 0 || weight > LIMITS.WEIGHT_MAX)) {
     errors.actualWeight = 'Peso no válido';
   }
   return Object.keys(errors).length > 0 ? errors : null;

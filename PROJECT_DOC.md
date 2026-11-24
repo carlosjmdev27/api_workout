@@ -44,6 +44,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Fase 15 de la spec (vista de perfil: datos personales y contraseña):** ✅ Completada (2026-11-24).
 
+**Fase 16 de la spec (peso corporal y unidad de peso global kg/lb):** ✅ Completada (2026-11-24). Esquema de la base de datos en **v6**.
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -1671,3 +1673,57 @@ Hecho con la CLI de Railway (v5.75.0), con la sesión del usuario.
 **Incidencias del test:**
 1. La primera pasada de interfaz recibió "Demasiados intentos": el test de la API, lanzado justo antes desde la misma IP, había agotado los 10 intentos. Es el comportamiento correcto. Se reinició la API de prueba (el contador está en memoria).
 2. Aparecieron 3 errores "Uncaught" en una pasada en la que se habían editado archivos de sesión con la página abierta (recarga en caliente de Vite). No se repiten en una sesión limpia.
+
+---
+
+## 2026-11-24 · Fase 16: peso corporal y unidad de peso (kg / lb)
+
+### Base de datos: migración v6 (segura)
+
+- Nueva migración de tipo **código** (`{ run }`) en `migrations.ts`. El runner admite ahora tres formas: SQL, SQL con claves foráneas desactivadas y función.
+- `addUserPreferences` lee **`PRAGMA table_info(users)`** y añade cada columna **solo si no existe**:
+  - `body_weight REAL`, opcional, `CHECK` entre 20 y 500;
+  - `weight_unit TEXT NOT NULL DEFAULT 'kg'`, `CHECK IN ('kg', 'lb')`.
+- Solo `ALTER TABLE … ADD COLUMN`: no se reconstruye ni se borra nada. Los usuarios existentes quedan con `kg` y sin peso corporal. Va en la misma transacción que sube `user_version` a 6 y pasa por `foreign_key_check`.
+- Los límites del `CHECK` son copias congeladas (una migración aplicada no debe cambiar aunque cambien los `LIMITS`).
+
+### Backend
+
+- `User` (contrato compartido) añade **`bodyWeight: number | null`** y **`weightUnit: 'kg' | 'lb'`**. Aparecen en `register`, `login`, `GET /auth/me` y `PUT /auth/profile`. La API mantiene camelCase (como `createdAt`); en SQLite son `body_weight` y `weight_unit`.
+- `PUT /api/auth/profile` ahora exige `{ name, email, bodyWeight, weightUnit }` (`strictObject`):
+  - `weightUnit`: exactamente `'kg'` o `'lb'`;
+  - `bodyWeight`: número entre 20 y 500, o `null` para borrarlo (el formulario envía `null` si el campo queda vacío).
+- `login` construye el usuario con una **lista explícita de campos**, así el hash (o cualquier columna privada futura) no puede colarse en la respuesta.
+- Nuevo módulo compartido `weight-units.ts` (`WEIGHT_UNITS`, `WeightUnit`, `DEFAULT_WEIGHT_UNIT`, `isWeightUnit`).
+- **`LIMITS.WEIGHT_MAX_KG` (1000) pasa a `LIMITS.WEIGHT_MAX` (2000)**: el límite se aplica en la unidad del usuario, y 1000 se quedaba corto en libras (p. ej. una prensa de piernas). Nuevos `BODY_WEIGHT_MIN` / `BODY_WEIGHT_MAX`.
+
+### Sin conversiones
+
+- Los pesos se guardan **tal cual se escriben**, en la unidad activa. Cambiar de unidad **solo cambia las etiquetas**: 100 sigue siendo 100. Así nunca se alteran ni se redondean registros históricos.
+- El perfil lo explica bajo el selector: "Los pesos ya guardados no se convierten."
+
+### Frontend
+
+- **Perfil (tarjeta "Datos personales y físicos"):**
+  - campo **Peso corporal** (`inputMode="decimal"`, admite coma) con la unidad activa como sufijo y en la etiqueta; opcional;
+  - selector segmentado **Kilogramos (kg) / Libras (lb)** hecho con radios nativos (teclado y lectores de pantalla sin código extra);
+  - fuera de rango: "Entre 20 y 500 kg/lb" sin llamar a la API;
+  - al guardar, `AuthContext.updateUser` aplica la unidad **al instante en toda la app**.
+- **Hook `useWeightUnit()`** (`features/auth/`): devuelve `user.weightUnit` o `'kg'`.
+- **`formatWeight(valor, unidad)`** exige la unidad.
+- **Etiquetas sustituidas:**
+  - tabla de series de la rutina (`SetsTable`) y editor de series (cabecera y etiquetas accesibles);
+  - entrenamiento activo: cabecera "Peso (…)", etiqueta de cada input y pista "Objetivo: 100 lb";
+  - historial: título y tooltip de la gráfica de Recharts, tabla de progresión, tarjetas de sesión, lista de series;
+  - resumen post-entrenamiento (peso movido y su diferencia) y comparativa por ejercicio.
+- `TextField` admite un `suffix` visual opcional.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` | ✅ (el aviso de tamaño del bundle es el pendiente #8) |
+| Migración sobre una **copia** de la base de desarrollo (copia con la API de backup, la original solo se lee y su hash no cambia) | ✅ 14 comprobaciones: v5 → v6; **ninguna fila perdida** en ninguna tabla; usuarios intactos (incluido el hash); `kg` y `NULL` por defecto; claves foráneas e `integrity_check` correctos; segunda ejecución sin efecto; los `CHECK` rechazan `stone`, 10 y 900; columna ya existente → se salta y conserva su valor; base nueva v0 → v6 |
+| API aislada (19 comprobaciones) | ✅ Los campos llegan en register, login y `/me`; guardar 80,5 lb y borrarlo con `null`; 400 con `stone`, `KG`, 19,9, 500,1, negativo, texto o campos ausentes; 20 y 500 aceptados; los rechazos no cambian nada; peso 1500 aceptado y 2001 rechazado; **cambiar de unidad no convierte** los pesos guardados |
+| Interfaz con Edge vía CDP (11 flujos) | ✅ "Peso (kg)" por defecto; error de rango visible; elegir lb + "82,5" guarda y se mantiene al recargar; rutina, entrenamiento activo e historial pasan a lb **con los mismos números** y sin ningún "kg"; vaciar el peso y volver a kg guarda `null`; sin errores de ejecución |
+| Capturas | Perfil en oscuro (móvil) y claro (escritorio); historial en lb |

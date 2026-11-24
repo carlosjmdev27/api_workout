@@ -1,14 +1,16 @@
 import type { JSX } from 'react';
 import { Trophy } from 'lucide-react';
 import { formatWeight, signedDelta } from '../../../utils/format';
+import { useWeightUnit } from '../../auth/useWeightUnit';
 import type { ExerciseComparison } from '../compare';
 import type { BestSet } from '../stats';
 
-const setText = (set: BestSet | null): string =>
-  set ? `${set.weight === null ? 'sin peso' : formatWeight(set.weight)} × ${set.reps}` : '—';
+const setText = (set: BestSet | null, unit: string): string =>
+  set ? `${set.weight === null ? 'sin peso' : formatWeight(set.weight, unit)} × ${set.reps}` : '—';
 
 /** Best set of each exercise today vs the previous session: real weight and reps only. */
 export function ExerciseComparisonTable({ rows }: { rows: ExerciseComparison[] }): JSX.Element {
+  const unit = useWeightUnit();
   return (
     <div className="overflow-x-auto rounded-2xl border border-border bg-card p-4 shadow-sm">
       <table className="w-full min-w-[32rem] text-sm">
@@ -34,9 +36,9 @@ export function ExerciseComparisonTable({ rows }: { rows: ExerciseComparison[] }
                   </span>
                 )}
               </th>
-              <td className="py-2 font-semibold">{setText(row.best)}</td>
-              <td className="py-2 text-muted-foreground">{setText(row.previousBest)}</td>
-              <td className="py-2 text-right text-muted-foreground">{row.weightDelta === null ? '—' : signedDelta(row.weightDelta, 'kg')}</td>
+              <td className="py-2 font-semibold">{setText(row.best, unit)}</td>
+              <td className="py-2 text-muted-foreground">{setText(row.previousBest, unit)}</td>
+              <td className="py-2 text-right text-muted-foreground">{row.weightDelta === null ? '—' : signedDelta(row.weightDelta, unit)}</td>
               <td className="py-2 text-right">
                 {row.totalReps}
                 {row.repsDelta !== null && <span className="ml-1 text-xs text-muted-foreground">({signedDelta(row.repsDelta)})</span>}
