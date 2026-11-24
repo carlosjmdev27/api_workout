@@ -73,13 +73,17 @@ export function TextField({ label, error, hint, required, className, suffix, ...
   );
 }
 
-type PasswordFieldProps = FieldMeta & Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>;
+type PasswordFieldProps = FieldMeta &
+  Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
+    /** Accessible name of the eye button; default "Mostrar <label>". */
+    toggleLabel?: string;
+  };
 
 /**
  * Password input with an eye button to show / hide what was typed (Eye / EyeOff).
  * Toggle button: fixed accessible name, state in aria-pressed. Hidden by default.
  */
-export function PasswordField({ label, error, hint, required, className, ...inputProps }: PasswordFieldProps): JSX.Element {
+export function PasswordField({ label, error, hint, required, className, toggleLabel, ...inputProps }: PasswordFieldProps): JSX.Element {
   const id = useId();
   const [visible, setVisible] = useState(false);
   const Icon = visible ? EyeOff : Eye;
@@ -101,7 +105,7 @@ export function PasswordField({ label, error, hint, required, className, ...inpu
         <button
           type="button"
           onClick={() => setVisible((current) => !current)}
-          aria-label={`Mostrar ${label.toLowerCase()}`}
+          aria-label={toggleLabel ?? `Mostrar ${label.toLowerCase()}`}
           aria-pressed={visible}
           aria-controls={id}
           title={visible ? 'Ocultar' : 'Mostrar'}

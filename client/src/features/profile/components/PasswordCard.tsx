@@ -4,7 +4,7 @@ import { LIMITS, passwordChangeSchema } from '@gym/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
-import { TextField } from '../../../components/FormField';
+import { PasswordField } from '../../../components/FormField';
 import { getErrorMessage } from '../../../utils/errors';
 import { validateWith, type FieldErrors } from '../../../utils/validation';
 import { useChangePassword } from '../hooks';
@@ -59,9 +59,9 @@ export function PasswordCard(): JSX.Element {
       </CardHeader>
       <CardContent>
         <form noValidate onSubmit={handleSubmit} className="space-y-4">
-          <TextField label="Contraseña actual" type="password" autoComplete="current-password" required {...field('currentPassword')} />
-          <TextField label="Nueva contraseña" type="password" autoComplete="new-password" required {...field('newPassword')} />
-          <TextField label="Confirmar nueva contraseña" type="password" autoComplete="new-password" required {...field('confirm')} />
+          <PasswordField label="Contraseña actual" autoComplete="current-password" required {...field('currentPassword')} />
+          <PasswordField label="Nueva contraseña" autoComplete="new-password" required {...field('newPassword')} />
+          <PasswordField label="Confirmar nueva contraseña" toggleLabel="Mostrar la confirmación de la contraseña" autoComplete="new-password" required {...field('confirm')} />
           <ul className="space-y-1 text-xs" aria-label="Requisitos de la nueva contraseña">
             <Requirement met={longEnough}>{`Al menos ${LIMITS.PASSWORD_MIN} caracteres`}</Requirement>
             <Requirement met={matches}>Las dos contraseñas coinciden</Requirement>

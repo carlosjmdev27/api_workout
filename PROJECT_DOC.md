@@ -1896,8 +1896,14 @@ La redirección tras confirmar usa `CORS_ORIGIN` si existe: Vite en desarrollo, 
   - es `type="button"`, así que nunca envía el formulario;
   - mide 40×36 px, cómodo de pulsar en el móvil.
 - Desactiva el autocorrector y las mayúsculas automáticas: al mostrar la contraseña, el móvil no debe "corregirla".
-- **Dónde:** el campo "Contraseña" de `/login` y de `/register`. Los de `/profile` (cambio de contraseña) siguen como estaban.
+- **Dónde:** el campo "Contraseña" de `/login` y de `/register` y, desde el mismo día, los tres campos de **Perfil → Seguridad**. Para "Confirmar nueva contraseña", el nombre accesible es "Mostrar la confirmación de la contraseña" (prop opcional `toggleLabel`).
 - **Verificación:**
   - `npm run check` ✅;
   - Edge headless en un móvil de 390×844 (9 comprobaciones ✅): en las dos pantallas empieza oculta; un clic la muestra y conserva el valor; otro clic la oculta sin enviar el formulario; el botón queda dentro del campo; sin errores de ejecución;
   - capturas en oscuro (login) y claro (registro).
+- **Ayuda del correo en el registro:** antes decía "Te enviaremos un enlace para confirmarlo.", que no es cierto en Railway con `REQUIRE_EMAIL_VERIFICATION=false`. Ahora dice **"Usa un correo real: comprobamos que su dominio existe."**, válido en los dos modos.
+- **Verificación del perfil** (Edge headless, API aislada, 5 comprobaciones ✅):
+  - los tres ojos tienen nombres claros;
+  - cada uno muestra solo su campo;
+  - el cambio de contraseña sigue funcionando: con la actual errónea da error; con la correcta muestra el éxito, vacía los campos y la nueva contraseña sirve para entrar;
+  - sin errores de ejecución.

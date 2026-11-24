@@ -99,7 +99,7 @@ export function RegisterPage(): JSX.Element {
           hint={`${LIMITS.USERNAME_MIN}-${LIMITS.USERNAME_MAX} letras, números o "_". Podrás entrar con él o con tu correo.`}
           {...field('username')}
         />
-        <TextField label="Correo electrónico" type="email" autoComplete="email" inputMode="email" required maxLength={LIMITS.EMAIL_MAX} hint="Te enviaremos un enlace para confirmarlo." {...field('email')} />
+        <TextField label="Correo electrónico" type="email" autoComplete="email" inputMode="email" required maxLength={LIMITS.EMAIL_MAX} hint="Usa un correo real: comprobamos que su dominio existe." {...field('email')} />
         <PasswordField label="Contraseña" autoComplete="new-password" required hint={`Mínimo ${LIMITS.PASSWORD_MIN} caracteres.`} {...field('password')} />
         <Button type="submit" icon={UserPlus} loading={pending} className="w-full">Crear cuenta</Button>
       </form>
