@@ -587,3 +587,46 @@ Ampliar la vista de perfil (`/profile`) para que el usuario pueda registrar su *
 ### 4. Ajuste de Pull-to-Refresh en Móvil (Hotfix Fase 14)
 - Eliminar `overscroll-behavior-y: none` / `overscroll-y-none` de `html`, `body` y contenedores principales para restaurar el gesto nativo de arrastrar hacia abajo para recargar la página (*pull-to-refresh*) en navegadores móviles (iOS Safari y Android Chrome).
 - Mantener únicamente la arquitectura `min-h-[100dvh]` con `flex flex-col` y limpieza de márgenes/paddings sobrantes para evitar el scroll vertical innecesario en vistas cortas.
+
+---
+
+## 🔐 Fase 17: Verificación de Email Real y Login con Usuario o Correo
+
+### 1. Objetivo
+Reforzar el registro y acceso de **AuraWorkout** sin integraciones OAuth de terceros:
+1. **Registro con correo real**: Validar el formato, comprobar registros MX del dominio y enviar un correo de confirmación real mediante Resend antes de activar la cuenta.
+2. **Login flexible**: Permitir iniciar sesión introduciendo tanto el **nombre de usuario (`username`)** como el **correo electrónico** en el mismo campo.
+
+### 2. Migración Segura de Base de Datos (`users` en SQLite)
+Actualizar la tabla `users` al arrancar el servidor mediante migración segura (`PRAGMA table_info(users)` para conservar los usuarios y rutinas existentes):
+- `username`: `TEXT UNIQUE` (para usuarios existentes sin `username`, generar uno automático derivado de su email o nombre para evitar conflictos).
+- `email_verified`: `INTEGER NOT NULL DEFAULT 0` (en la migración inicial, marcar como `1` a los usuarios que ya existían en la base de datos para no bloquear las cuentas actuales).
+- `verification_token`: `TEXT` (nullable, token generado con `crypto.randomBytes(32).toString('hex')`).
+- `verification_expires`: `INTEGER` (timestamp de expiración a 24 horas).
+
+### 3. Cambios en el Backend (Node.js / Express)
+1. **Registro (`POST /api/auth/register`)**:
+   - Validar `username` único (3-20 caracteres alfanuméricos o guion bajo, sin espacios).
+   - Validar formato de email y comprobar que el dominio tenga servidores de correo reales mediante `dns.promises.resolveMx(domain)` (rechazando dominios falsos o mal escritos como `@gmial.com`).
+   - Guardar el usuario con `email_verified = 0` y enviar el enlace de confirmación (`${APP_URL}/api/auth/verify-email?token=...`) usando la API HTTP de **Resend** (`RESEND_API_KEY` y `EMAIL_FROM`), con fallback a `console.log` en desarrollo si no hay API key.
+   - Responder con `201 Created` sin emitir JWT todavía, indicando que revise su correo.
+2. **Confirmación de Email (`GET /api/auth/verify-email?token=...`)**:
+   - Verificar que el token exista y no haya caducado, actualizar `email_verified = 1`, limpiar el token y redirigir a `/login?verified=true`.
+   - Añadir `POST /api/auth/resend-verification` para reenviar el correo de confirmación si el usuario lo solicita.
+3. **Login Flexible (`POST /api/auth/login`)**:
+   - Recibir `{ identifier, password }` y buscar en SQLite por `LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)`.
+   - Verificar la contraseña con `bcryptjs`.
+   - Si `email_verified === 0`, devolver `403 Forbidden` indicando que debe confirmar su correo electrónico (ofreciendo botón de reenvío en el frontend).
+
+### 4. Cambios en el Frontend (React + shadcn/ui)
+1. **Registro (`/register`)**:
+   - Añadir el campo **Nombre de usuario** junto a Nombre, Correo y Contraseña.
+   - Tras registrarse con éxito, mostrar una pantalla de confirmación ("Revisa tu bandeja de entrada") con opción para reenviar el correo.
+2. **Login (`/login`)**:
+   - Cambiar la etiqueta del primer campo a **"Correo electrónico o nombre de usuario"**.
+   - Mostrar banner de éxito si llega con `?verified=true` y alerta con botón de reenvío si intenta acceder sin verificar su correo.
+
+### 5. Variables de Entorno en Railway
+- `APP_URL` = `https://apiworkout-production.up.railway.app`
+- `RESEND_API_KEY` = *(secreta: configurada solo en las variables de Railway, nunca en el repositorio)*
+- `EMAIL_FROM` = `AuraWorkout <onboarding@resend.dev>`
