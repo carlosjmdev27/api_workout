@@ -35,7 +35,7 @@ export function Modal({ open, title, onClose, children, size = 'md' }: ModalProp
       aria-labelledby={titleId}
       // shadcn/ui dialog look on top of the native <dialog> (kept for its built-in focus trap and
       // Esc handling, which the exercise combobox relies on to close only its own popup).
-      className={`m-auto w-[calc(100%-2rem)] ${SIZES[size]} rounded-xl border border-border bg-popover p-0 text-popover-foreground shadow-2xl ring-1 ring-white/5 backdrop:bg-black/70 backdrop:backdrop-blur-sm`}
+      className={`m-auto w-[calc(100%-2rem)] ${SIZES[size]} rounded-xl border border-border bg-popover p-0 text-popover-foreground shadow-2xl dark:ring-1 dark:ring-white/5 backdrop:bg-slate-900/40 backdrop:backdrop-blur-sm dark:backdrop:bg-black/70`}
     >
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <h2 id={titleId} className="text-lg font-semibold text-foreground">

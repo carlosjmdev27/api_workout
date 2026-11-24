@@ -38,6 +38,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Fase 12 de la spec (shadcn/ui + lucide-react + Recharts, tema oscuro atlético):** ✅ Completada (2026-11-24).
 
+**Fase 13 de la spec (interruptor de tema claro/oscuro):** ✅ Completada (2026-11-24).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -1503,3 +1505,56 @@ Hecho con la CLI de Railway (v5.75.0), con la sesión del usuario.
 - **El falso negativo:** el test leyó el color de la serie marcada en mitad de la transición: `rgb(163, 229, 53)` frente al esperado `rgb(163, 230, 53)`.
 
 **Capturas revisadas:** login (móvil), estado vacío, grid, detalle de la rutina (escritorio y móvil), editor (móvil), entrenamiento (móvil), historial con la gráfica y el tooltip, volumen (móvil) y resumen.
+
+---
+
+## 2026-11-24 · Fase 13: modo claro / modo oscuro
+
+### Temas (`client/src/index.css`)
+
+- **Estrategia por clase:** la variante `dark` (`@custom-variant dark (&:is(.dark *))`) es el equivalente en Tailwind v4 de `darkMode: 'class'`. `.dark` en `<html>` = oscuro; sin clase = claro.
+- **`:root` (claro):**
+  - fondo `#F8FAFC`, tarjetas `#FFFFFF`, bordes `#E2E8F0`, texto `#0F172A` y texto secundario `#64748B`;
+  - `color-scheme: light`.
+- **`.dark` (oscuro atlético, el de la Fase 12):** fondo `#09090B`, tarjetas `#121215`, bordes `#27272A` y texto `#FAFAFA`.
+- **Acento en modo claro:** el lima `#A3E635` sobre blanco tiene un contraste de ~1,5:1 (ilegible como texto: "+ Añadir serie", números de ejercicio…). En claro se usa **lima oscuro `#4D7C0F`** (5:1 sobre blanco, con texto blanco encima) para `primary`, `ring` y `chart-1`, y `#2563EB` para `chart-2`. En oscuro sigue el lima `#A3E635`.
+- **Colores ajustados para los dos temas:**
+  - tipos de serie: `text-X-700` en claro y `dark:text-X-300` en oscuro, con el mismo tinte translúcido;
+  - ámbar de las notas, del "Récord" y del aviso del entrenamiento;
+  - fondo del modal más suave en claro (`slate-900/40`; `black/70` en oscuro).
+
+### `ThemeProvider` (`client/src/theme/`)
+
+- `theme-storage.ts`: clave **`auraworkout-theme`** en `localStorage`; **`dark` por defecto** la primera vez y si el almacenamiento está bloqueado. `applyTheme()` añade o quita `dark` en `document.documentElement`.
+- `ThemeProvider.tsx` + `theme-context.ts` (`useTheme()`): estado del tema, aplicación y guardado en un efecto.
+- **Sin "flash" al cargar:** `public/theme-init.js` aplica el tema guardado **antes de que cargue React**. Es un archivo externo del mismo origen porque **la CSP de helmet prohíbe los scripts en línea**. `index.html` sigue con `class="dark"` como valor por defecto.
+
+### Interruptor
+
+- `ThemeToggle`: `Button` de shadcn `variant="ghost" size="icon"`, con **`<Sun />` en oscuro** (pasar a claro) y **`<Moon />` en claro** (pasar a oscuro).
+  - `aria-label` y `title` dicen qué hará el clic ("Cambiar a modo claro/oscuro").
+  - Está en la **cabecera, junto al menú de usuario**, y también en la esquina superior derecha de las pantallas de login y registro, que no tienen cabecera.
+
+### Recharts
+
+- Ejes, rejilla, línea, puntos y tooltip ya usaban variables CSS (`var(--border)`, `var(--muted-foreground)`, `var(--chart-1)`, `bg-popover`…), así que **cambian al instante al cambiar el tema**, sin volver a pintar la gráfica.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` (incluye `npm run build`) | ✅ |
+| `npm audit` | ✅ 0 vulnerabilidades |
+| Interfaz con Edge vía CDP | ✅ 9/9 (detalle debajo) |
+| Imagen de producción | ✅ `theme-init.js` se sirve como `text/javascript` y `no-cache`. Sin violaciones de la CSP |
+| Capturas en modo claro | Login (móvil), grid, detalle, entrenamiento (móvil), historial con tooltip, resumen y editor (móvil). Además, el historial en oscuro tras el cambio |
+
+**Qué cubren los flujos de interfaz:**
+- Primera visita en oscuro, con el icono Sol.
+- Cambio a claro: `#F8FAFC`, guardado e icono Luna.
+- Al recargar sigue en claro y **la clase ya está aplicada al analizar el HTML** (sin parpadeo).
+- El interruptor está en la cabecera junto a "Salir".
+- Recharts en claro: línea `#4D7C0F`, rejilla `#E2E8F0`, ejes `#64748B` y tooltip blanco.
+- **Cambio de tema en la propia página del historial:** la gráfica pasa al instante a lima `#A3E635`, rejilla `#27272A` y ejes `#A1A1AA`.
+- Modal en claro.
+- Sin errores de ejecución.

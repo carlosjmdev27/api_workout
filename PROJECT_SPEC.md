@@ -488,3 +488,19 @@ Actualizar el frontend de **AuraWorkout** integrando de forma conjunta:
 - **Mantener la compactación vertical (Fase 7)**: Los componentes de `shadcn/ui` (inputs, botones y filas) deben estilizarse en versión compacta (`h-8`, padding reducido) dentro de las tarjetas de ejercicios para seguir viendo varias series sin scroll excesivo.
 - **Mantener el dashboard de AuraWorkout (Fase 11)**: Conservar el título condicional `My Workouts`, la tarjeta estética final para crear nueva rutina y la ausencia de botones redundantes.
 - **Compatibilidad con Build de Producción**: Asegurar que `npm run build` en el frontend compile limpiamente sin errores de TypeScript o dependencias para no afectar al `Dockerfile` de Railway.
+
+---
+
+## 🌓 Fase 13: Interruptor de Tema (Modo Oscuro / Modo Claro)
+
+### 1. Gestión del Tema (`ThemeProvider`)
+- Configurar Tailwind con estrategia por clase (`darkMode: 'class'`).
+- Definir variables CSS semánticas en `index.css` para `:root` (Modo Claro limpio: fondo `#F8FAFC`, tarjetas `#FFFFFF`, bordes `#E2E8F0`, texto `#0F172A`) y `.dark` (Modo Oscuro Atlético: fondo `#09090B`, tarjetas `#121215`, bordes `#27272A`, texto `#FAFAFA`).
+- Crear un contexto/hook ligero `ThemeProvider` que:
+  1. Lea la preferencia guardada en `localStorage` (`auraworkout-theme`), usando **`dark` como valor por defecto** la primera vez que entra el usuario.
+  2. Añada o quite dinámicamente la clase `dark` en `document.documentElement` (`<html>`).
+
+### 2. Botón en la Cabecera (`Header` / `Navbar`)
+- Colocar un botón compacto de icono (`variant="ghost"` o `outline`, tamaño `icon`) en la barra superior de **AuraWorkout**, junto al menú de usuario / cerrar sesión.
+- Usar iconos de **Lucide React**: mostrar `<Sun />` cuando está activo el modo oscuro (indicando cambio a claro) y `<Moon />` cuando está activo el modo claro.
+- Asegurar que tanto los componentes de `shadcn/ui` como las gráficas de `Recharts` (ejes, tooltips y cuadrículas) usen las variables CSS del tema para verse nítidos en ambos modos.

@@ -79,7 +79,7 @@ function ActiveWorkout({ day, lastSession }: { day: WorkoutDayDetail; lastSessio
 function OtherWorkoutInProgress({ dayName, otherDayId }: { dayName: string; otherDayId: string }): JSX.Element {
   return (
     <div className="mx-auto max-w-md space-y-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-center">
-      <p className="text-sm text-amber-200">Tienes un entrenamiento en curso de <strong>{dayName}</strong>. Solo puede haber uno activo a la vez.</p>
+      <p className="text-sm text-amber-800 dark:text-amber-200">Tienes un entrenamiento en curso de <strong>{dayName}</strong>. Solo puede haber uno activo a la vez.</p>
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
         <LinkButton to={activeWorkoutPath(otherDayId)} icon={Play}>Reanudar {dayName}</LinkButton>
         <Button variant="secondary" icon={Trash2} onClick={clearActiveWorkout}>Descartarlo y empezar esta</Button>

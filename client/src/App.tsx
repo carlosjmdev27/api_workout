@@ -15,9 +15,20 @@ import { RoutineEditPage } from './features/routines/pages/RoutineEditPage';
 import { RoutineListPage } from './features/routines/pages/RoutineListPage';
 import { ActiveWorkoutBanner } from './features/workout/components/ActiveWorkoutBanner';
 import { WorkoutPage } from './features/workout/pages/WorkoutPage';
+import { ThemeToggle } from './theme/ThemeToggle';
 
 // Recharts lives only in the history view: load it on demand so the main bundle stays small.
 const HistoryPage = lazy(() => import('./features/history/pages/HistoryPage').then((m) => ({ default: m.HistoryPage })));
+
+/** Top bar, right side: theme switch next to the user menu. */
+function HeaderActions(): JSX.Element {
+  return (
+    <div className="flex items-center gap-1">
+      <ThemeToggle />
+      <UserMenu />
+    </div>
+  );
+}
 
 function App(): JSX.Element {
   return (
@@ -29,7 +40,7 @@ function App(): JSX.Element {
             <Route path="register" element={<RegisterPage />} />
           </Route>
           <Route element={<ProtectedRoute />}>
-            <Route element={<Layout banner={<ActiveWorkoutBanner />} actions={<UserMenu />} />}>
+            <Route element={<Layout banner={<ActiveWorkoutBanner />} actions={<HeaderActions />} />}>
               <Route index element={<RoutineListPage />} />
               <Route path="routines/new" element={<RoutineCreatePage />} />
               <Route path="routines/:routineId" element={<RoutineDetailPage />} />

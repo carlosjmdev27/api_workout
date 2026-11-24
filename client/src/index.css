@@ -6,9 +6,10 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * AuraWorkout "athletic dark" theme (PROJECT_SPEC Fase 12). Single theme: <html class="dark">.
- * Components use the semantic tokens below (bg-card, text-muted-foreground, bg-primary...),
- * never raw palette colours, so the whole look is tuned from this one place.
+ * AuraWorkout themes (PROJECT_SPEC Fases 12-13): `.dark` on <html> = athletic dark (default),
+ * no class = clean light. Class strategy = the `dark` custom variant above (Tailwind v4's
+ * equivalent of darkMode: 'class'). Components only use the semantic tokens below
+ * (bg-card, text-muted-foreground, bg-primary...), so both looks are tuned from this file.
  */
 @theme inline {
     --font-heading: var(--font-sans);
@@ -43,7 +44,35 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Light ("clean"). The lime accent is darkened: #A3E635 on white is ~1.5:1, unreadable as text. */
 :root {
+    color-scheme: light;
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
+    --primary: #4d7c0f; /* lime-700: 5:1 on white as text, white text on it 5:1 */
+    --primary-foreground: #ffffff;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --accent: #f1f5f9;
+    --accent-foreground: #0f172a;
+    --destructive: #dc2626;
+    --success: #4d7c0f;
+    --border: #e2e8f0;
+    --input: #cbd5e1;
+    --ring: #4d7c0f;
+    --chart-1: #4d7c0f;
+    --chart-2: #2563eb;
+    --radius: 0.625rem;
+}
+
+/* Dark ("athletic"), the default. */
+.dark {
     color-scheme: dark; /* native selects, scrollbars and date pickers in dark too */
     --background: #09090b;
     --foreground: #fafafa;
@@ -68,7 +97,6 @@
     --ring: #a3e635;
     --chart-1: #a3e635;
     --chart-2: #3b82f6;
-    --radius: 0.625rem;
 }
 
 @layer base {

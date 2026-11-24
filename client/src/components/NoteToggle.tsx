@@ -21,7 +21,7 @@ export function NoteToggleButton({ open, controls, label, onToggle }: NoteToggle
       title={label}
       onClick={onToggle}
       className={`rounded-lg p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
-        open ? 'bg-amber-500/10 text-amber-300' : 'text-muted-foreground/70 hover:bg-muted hover:text-foreground/90'
+        open ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'text-muted-foreground/70 hover:bg-muted hover:text-foreground/90'
       }`}
     >
       <StickyNote className="h-4 w-4" aria-hidden="true" />

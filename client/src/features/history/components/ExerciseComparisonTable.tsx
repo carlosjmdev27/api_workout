@@ -28,7 +28,7 @@ export function ExerciseComparisonTable({ rows }: { rows: ExerciseComparison[] }
               <th scope="row" className="py-2 pr-2 text-left font-medium text-foreground">
                 {row.name}
                 {row.isRecord && (
-                  <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
+                  <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-500/30">
                     <Trophy className="h-3 w-3" aria-hidden="true" />
                     Récord
                   </span>
