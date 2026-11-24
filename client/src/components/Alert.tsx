@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface AlertProps {
@@ -6,6 +6,8 @@ interface AlertProps {
   details?: string[];
   /** 'success' = discreet confirmation, announced politely (role="status"). */
   tone?: 'error' | 'success';
+  /** Optional control under the message (e.g. "Reenviar correo"). */
+  action?: ReactNode;
 }
 
 const TONES = {
@@ -14,7 +16,7 @@ const TONES = {
 } as const;
 
 /** Inline banner: errors (default) or success confirmations. */
-export function Alert({ message, details = [], tone = 'error' }: AlertProps): JSX.Element {
+export function Alert({ message, details = [], tone = 'error', action }: AlertProps): JSX.Element {
   const { role, icon: Icon, classes } = TONES[tone];
   return (
     <div role={role} className={`flex gap-3 rounded-lg border p-3 text-sm ${classes}`}>
@@ -28,6 +30,7 @@ export function Alert({ message, details = [], tone = 'error' }: AlertProps): JS
             ))}
           </ul>
         )}
+        {action && <div className="mt-2">{action}</div>}
       </div>
     </div>
   );

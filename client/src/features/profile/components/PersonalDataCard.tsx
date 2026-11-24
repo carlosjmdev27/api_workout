@@ -14,6 +14,7 @@ import { WeightUnitSelector } from './WeightUnitSelector';
 
 interface FormValues {
   name: string;
+  username: string;
   email: string;
   /** As typed ("80,5"); empty = no body weight. */
   bodyWeight: string;
@@ -22,6 +23,7 @@ interface FormValues {
 
 const toValues = (user: User): FormValues => ({
   name: user.name,
+  username: user.username,
   email: user.email,
   bodyWeight: user.bodyWeight === null ? '' : String(user.bodyWeight).replace('.', ','),
   weightUnit: user.weightUnit,
@@ -33,6 +35,7 @@ function isUnchanged(values: FormValues, user: User): boolean {
   const candidate = toCandidate(values);
   return (
     values.name.trim() === user.name &&
+    values.username.trim().toLowerCase() === user.username &&
     values.email.trim().toLowerCase() === user.email &&
     candidate.bodyWeight === user.bodyWeight &&
     values.weightUnit === user.weightUnit
@@ -41,7 +44,7 @@ function isUnchanged(values: FormValues, user: User): boolean {
 
 const BODY_WEIGHT_RANGE = `Entre ${LIMITS.BODY_WEIGHT_MIN} y ${LIMITS.BODY_WEIGHT_MAX}`;
 
-/** Card 1: account date (read only) + name, email, body weight and preferred unit. */
+/** Card 1: account date (read only) + name, username, email, body weight and preferred unit. */
 export function PersonalDataCard(): JSX.Element {
   const user = useCurrentUser();
   const mutation = useUpdateProfile();
@@ -61,7 +64,7 @@ export function PersonalDataCard(): JSX.Element {
       return setErrors(bodyWeight ? { ...rest, bodyWeight: `${BODY_WEIGHT_RANGE} ${values.weightUnit}` } : rest);
     }
     setErrors({});
-    // Shows the normalized values (trimmed name, lowercase email) once saved.
+    // Shows the normalized values (trimmed name, lowercase username / email) once saved.
     mutation.mutate(result.data, { onSuccess: (saved) => setValues(toValues(saved)) });
   };
 
@@ -76,7 +79,8 @@ export function PersonalDataCard(): JSX.Element {
       </CardHeader>
       <CardContent>
         <form noValidate onSubmit={handleSubmit} className="space-y-4">
-          <TextField label="Nombre de usuario" autoComplete="name" required maxLength={LIMITS.NAME_MAX} value={values.name} error={errors.name} onChange={(e) => edit('name', e.target.value)} />
+          <TextField label="Nombre" autoComplete="name" required maxLength={LIMITS.NAME_MAX} value={values.name} error={errors.name} onChange={(e) => edit('name', e.target.value)} />
+          <TextField label="Nombre de usuario" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={LIMITS.USERNAME_MAX} hint="Puedes iniciar sesión con él o con tu correo." value={values.username} error={errors.username} onChange={(e) => edit('username', e.target.value)} />
           <TextField label="Correo electrónico" type="email" inputMode="email" autoComplete="email" required maxLength={LIMITS.EMAIL_MAX} value={values.email} error={errors.email} onChange={(e) => edit('email', e.target.value)} />
           <div className="grid gap-4 sm:grid-cols-[minmax(0,10rem)_1fr] sm:items-start">
             <TextField

@@ -48,6 +48,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Actualización v7 de la spec (hotfix de la Fase 14: pull-to-refresh):** ✅ Completada (2026-11-24).
 
+**Fase 17 de la spec (verificación real del email y login con usuario o correo):** ✅ Completada (2026-11-24). Esquema de la base de datos en **v7**.
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -57,7 +59,7 @@ Revisar esta lista al empezar cada tarea.
 | 1 | ~~Unificar tipos y límites duplicados~~ | ✅ **Resuelto** (2026-11-19). `client` y `server` usan `@gym/shared`; ya no queda ningún archivo duplicado. | Fase 3 |
 | 2 | **Rate limiting** en la API. 🟡 **Parcial** (2026-11-20): login y registro ya están limitados (10 intentos / 15 min por IP). Falta un límite general para el resto de endpoints autenticados. | Media antes de exponer la API fuera de local | Fase 2 |
 | 9 | **HTTPS** antes de exponer la app fuera de la red local. El token viaja en cada petición: sin TLS se podría capturar. | Alta antes de exponerla | Fase 9 |
-| 10 | **Gestión de la cuenta.** 🟡 **Parcial** (2026-11-24): ya se pueden cambiar el nombre, el email y la contraseña (`/profile`). **Faltan:** recuperar la contraseña olvidada y **cerrar las demás sesiones al cambiar la contraseña** (hoy los tokens ya emitidos siguen valiendo hasta 7 días; habría que añadir una versión del token en `users`). | Media | Fase 9 |
+| 10 | **Gestión de la cuenta.** 🟡 **Parcial** (2026-11-24): ya se pueden cambiar el nombre, el nombre de usuario, el email y la contraseña (`/profile`), y desde la Fase 17 el email se confirma al registrarse. **Faltan:** recuperar la contraseña olvidada (la infraestructura de correo de la Fase 17 ya sirve para ello); **volver a confirmar el email cuando se cambia en el perfil** (hoy solo se comprueba su MX); y **cerrar las demás sesiones al cambiar la contraseña** (hoy los tokens ya emitidos siguen valiendo hasta 7 días; habría que añadir una versión del token en `users`). | Media | Fase 9 |
 | 3 | **Tests automatizados** en el repo. Hasta ahora las pruebas han sido scripts temporales. | Media | Fase 2 |
 | 5 | **Privacidad de los `.md` de la raíz** (detalle abajo). Decisión aplazada por el usuario el 2026-11-19. | Media: decidir antes de añadir información sensible a la documentación | Fase 4 v2 |
 | 6 | **Gestionar los ejercicios propios del catálogo** (renombrar, cambiar el grupo muscular, borrar). Hoy un ejercicio mal clasificado queda así para siempre. | Media | v4 |
@@ -1750,3 +1752,91 @@ Hecho con la CLI de Railway (v5.75.0), con la sesión del usuario.
 | Errores de ejecución | ✅ Ninguno |
 
 **Limitación:** el gesto de pull-to-refresh no se puede simular en un navegador headless. La prueba definitiva es abrir la app en el móvil y arrastrar hacia abajo.
+
+---
+
+## 2026-11-24 · Fase 17: verificación real del email (MX + Resend) y login con usuario o correo
+
+### Base de datos: migración v7 (segura)
+
+- Paso de código en `migration-v7.ts`. `columnNames` pasa a `schema-info.ts`, compartido con la v6. Lee `PRAGMA table_info(users)` y **añade solo las columnas que faltan**:
+  - `username TEXT`;
+  - `email_verified INTEGER NOT NULL DEFAULT 0` (`CHECK` 0/1);
+  - `verification_token TEXT`;
+  - `verification_expires INTEGER` (epoch en ms).
+- **Las cuentas que ya existían quedan verificadas** (`UPDATE … email_verified = 1`). Ese `UPDATE` solo se hace en la ejecución que crea la columna: si la migración se repitiese, nunca verificaría una cuenta nueva sin confirmar.
+- **Nombre de usuario para las cuentas existentes:** se saca de la parte del email antes de la `@`. Se pasa a minúsculas, se quitan los acentos y lo demás se convierte en `_`. Si sale vacío, se usa el nombre, y si no, `user`. Tiene 3-16 caracteres y, si choca con otro, se le añade un número (`carlos`, `carlos2`…); la cuenta más antigua conserva el nombre sin número.
+- `UNIQUE` mediante índices: `ALTER TABLE ADD COLUMN` no admite `UNIQUE`. Son `ux_users_username` y `ux_users_verification_token`; los `NULL` no chocan entre sí.
+- Solo `ADD COLUMN`, `UPDATE` e índices: nada se reconstruye ni se borra.
+
+### Backend
+
+| Endpoint | Comportamiento |
+|----------|----------------|
+| `POST /api/auth/register` `{ name, username, email, password }` | `username`: 3-20 caracteres de `[a-z0-9_]`, guardado en minúsculas, único (si ya existe → **409 `USERNAME_IN_USE`**). Email: formato + **`dns.promises.resolveMx`** (`Resolver` con 3 s de timeout y 2 intentos). Un dominio inexistente o sin MX, como `@gmial.com`, da **400 `EMAIL_DOMAIN_INVALID`**. También se rechaza un **"null MX"** (RFC 7505, p. ej. `example.com`). Un fallo pasajero de DNS da **503 `EMAIL_CHECK_UNAVAILABLE`**, porque no es culpa del usuario. La cuenta se crea **sin verificar**, se envía el enlace y se responde **201 `{ email, emailSent }` sin token**. |
+| `GET /api/auth/verify-email?token=…` | Si el token es válido y no ha caducado, confirma la cuenta, borra el token y redirige (**303**, `Cache-Control: no-store`) a `/login?verified=true`. Si no, redirige a `/login?verified=invalid`. **Cada enlace sirve una sola vez.** |
+| `POST /api/auth/resend-verification` `{ identifier }` | Genera un token nuevo (el anterior deja de valer) y reenvía el correo. Responde **siempre 202** y el envío no se espera, así que ni la respuesta ni su tiempo revelan qué cuentas existen. Limitado a 10 llamadas cada 15 min por IP (se cuentan todas), para que nadie pueda inundar un buzón. |
+| `POST /api/auth/login` `{ identifier, password }` | Busca por email **o** por nombre de usuario. Un email siempre lleva `@` y un nombre de usuario nunca, así que no hay ambigüedad. Ambos se guardan en minúsculas y el identificador se normaliza igual, así que la comparación ignora mayúsculas y aprovecha los índices únicos; con `LOWER()` no podría usarlos. Si la contraseña es correcta pero el correo no está confirmado → **403 `EMAIL_NOT_VERIFIED`**. Con la contraseña mal sigue siendo 401, así que el 403 no permite averiguar qué cuentas existen. |
+| `PUT /api/auth/profile` | Añade `username` (409 si es de otra cuenta). **Un email nuevo** también pasa la comprobación de MX. Si no se cambia, no se comprueba, así que la cuenta de pruebas `@gym.local` puede seguir guardando su perfil. |
+
+**Seguridad del token:**
+- Son 32 bytes aleatorios (`crypto.randomBytes(32)`) en hexadecimal, enviados en el enlace.
+- **En la base de datos solo se guarda su SHA-256.** Si la base de datos se filtrase, no serviría para confirmar cuentas.
+- Caducan a las 24 h (`LIMITS.VERIFICATION_TTL_HOURS`) y se comprueba su formato antes de buscarlos.
+- Con 256 bits no se pueden adivinar, así que el enlace no lleva limitador.
+- `helmet` ya envía `Referrer-Policy: no-referrer`, así que el token no se filtra en la cabecera `Referer`.
+
+**Envío de correo (`email.service.ts`):**
+- `ResendEmailSender` usa la API HTTP de Resend con un solo `fetch` (sin SDK ni dependencias nuevas) y un timeout de 10 s.
+- Sin `RESEND_API_KEY`, `ConsoleEmailSender` escribe el correo, con el enlace, en el log. En producción también avisa al arrancar de que falta la clave.
+- El HTML del correo escapa el nombre del usuario.
+- Si el envío falla: se registra el error, la cuenta queda creada y se responde `emailSent: false`; el usuario puede pedir otro enlace.
+
+**Nuevos:**
+- servicios: `EmailVerificationService`, `DnsEmailDomainChecker` y `EmailSender`;
+- `AuthService` recibe sus dependencias en un objeto;
+- en el repositorio: `findByIdentifier`, `setVerification` y `confirmEmail`, y resultados con tipo para las violaciones de `UNIQUE` de `email` y `username`.
+
+**Variables de entorno nuevas:**
+
+| Variable | Uso |
+|----------|-----|
+| `APP_URL` | Base de los enlaces. **Obligatoria en producción**: el servidor no arranca sin ella. En desarrollo, por defecto, es la propia API. |
+| `RESEND_API_KEY` | Secreta. Va solo en `.env` o en las variables de Railway, nunca en el repo. |
+| `EMAIL_FROM` | Por defecto `AuraWorkout <onboarding@resend.dev>`. |
+
+La redirección tras confirmar usa `CORS_ORIGIN` si existe: Vite en desarrollo, `http://localhost:8080` en Docker. En Railway no hay `CORS_ORIGIN`, así que es una ruta relativa, en el mismo origen.
+
+`docker-compose.yml` añade `APP_URL`, `RESEND_API_KEY` y `EMAIL_FROM`, estas dos últimas opcionales y leídas del `.env` de la raíz. Los `.env.example` están actualizados.
+
+### Frontend
+
+- **Registro:**
+  - nuevo campo **Nombre de usuario**, con su ayuda y su validación;
+  - tras registrarse, la pantalla **"Revisa tu bandeja de entrada"** muestra el email, la caducidad y el botón **"Reenviar correo"**;
+  - **no se inicia sesión**: `AuthContext.register` ya no crea una sesión.
+- **Login:**
+  - el campo pasa a llamarse **"Correo electrónico o nombre de usuario"**;
+  - con `?verified=true` aparece el banner de éxito, y con `?verified=invalid` un aviso de enlace caducado;
+  - el error `EMAIL_NOT_VERIFIED` muestra la alerta con el botón **"Reenviar correo"**, que usa el identificador escrito.
+- **Perfil:** "Nombre" (antes "Nombre de usuario", que en realidad era el nombre) y el **Nombre de usuario** real, ahora editable.
+- **Otros:**
+  - `Alert` admite una `action`;
+  - nuevo componente `ResendVerificationButton`, con un mensaje deliberadamente neutro;
+  - mensajes para los nuevos códigos de error, y validación del nombre de usuario en español.
+
+### Nota sobre Resend
+
+`onboarding@resend.dev` solo entrega correos a la dirección de la propia cuenta de Resend. Para enviarlos a cualquier persona hay que **verificar un dominio propio** en Resend y cambiar `EMAIL_FROM`.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` | ✅ |
+| Migración sobre **copias** de la base de desarrollo y de la copia de seguridad de Docker (los originales no cambian) | ✅ 25 comprobaciones: v5 → v7; ninguna fila perdida; usuarios intactos; **la cuenta existente queda verificada** y con nombre de usuario `pruebas`; integridad y claves foráneas correctas; repetirla no verifica una cuenta nueva; el índice rechaza nombres duplicados; 3 cuentas `carlos@…` → `carlos`, `carlos2`, `carlos3`; funciones de derivación con acentos, longitudes y símbolos |
+| API aislada, sin Resend (enlaces en el log) | ✅ Todas pasan. Dominio inventado y null MX → 400. Nombres de usuario inválidos → 400. Registro → 201 sin token. En la base de datos se guarda el SHA-256, no el token, y caduca en 24 h. Nombre de usuario o email repetidos → 409. 403 solo con la contraseña correcta. El reenvío da 202 exista o no la cuenta, y el enlace anterior deja de valer. Enlace válido → 303 a `/login?verified=true` con `no-store`, de un solo uso. Enlace caducado → `invalid`. Login con nombre de usuario (mayúsculas y espacios) y con email. Sin hash en las respuestas. El formato antiguo `{email,password}` → 400. Perfil: 409, 400 por MX y cambio de nombre de usuario. **Cuenta migrada: entra con `pruebas` y guarda su perfil con su email `@gym.local`** |
+| Interfaz con Edge vía CDP (12 flujos) | ✅ Error de dominio y de nombre de usuario, pantalla "Revisa tu bandeja", reenvío, alerta 403 con reenvío, el enlace lleva a "¡Correo confirmado!", el mismo enlace otra vez → caducado, login con nombre de usuario y con email, cambio de nombre de usuario en el perfil, sin errores de ejecución |
+| Capturas | Pantalla de confirmación (oscuro, móvil); login sin verificar (claro, escritorio); banner de confirmado (claro, móvil) |
+
+**Incidencia del test:** la primera pasada de la API superó los 10 registros por IP del limitador; es el comportamiento correcto. Se reordenó el test y se reinició la API de prueba.

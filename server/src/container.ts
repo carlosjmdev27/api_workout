@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Express } from 'express';
 import { createApp } from './app.js';
-import type { Env } from './config/env.js';
+import { appUrlOf, type Env } from './config/env.js';
 import { SERVER_ROOT } from './config/paths.js';
 import { AuthController } from './controllers/auth.controller.js';
 import { CatalogController } from './controllers/catalog.controller.js';
@@ -23,6 +23,9 @@ import { AccessGuard } from './services/access.guard.js';
 import { AuthService } from './services/auth.service.js';
 import { CatalogService } from './services/catalog.service.js';
 import { DayExerciseService } from './services/day-exercise.service.js';
+import { DnsEmailDomainChecker } from './services/email-domain.service.js';
+import { ConsoleEmailSender, ResendEmailSender, type EmailSender } from './services/email.service.js';
+import { EmailVerificationService } from './services/verification.service.js';
 import { PasswordService } from './services/password.service.js';
 import { RoutineService } from './services/routine.service.js';
 import { SessionService } from './services/session.service.js';
@@ -47,6 +50,13 @@ function resolvePublicDir(env: Env): string | null {
   return null;
 }
 
+/** Resend when configured; otherwise the confirmation links go to the log (development). */
+function emailSenderFor(env: Env): EmailSender {
+  if (env.RESEND_API_KEY) return new ResendEmailSender(env.RESEND_API_KEY, env.EMAIL_FROM);
+  if (env.NODE_ENV === 'production') console.warn('RESEND_API_KEY is not set: confirmation emails will only be logged');
+  return new ConsoleEmailSender();
+}
+
 export function buildContainer(env: Env): Container {
   const databasePath = resolve(SERVER_ROOT, env.DATABASE_PATH);
   console.log(`SQLite database: ${databasePath}`); // On Railway it must be inside the volume (/app/data).
@@ -54,9 +64,12 @@ export function buildContainer(env: Env): Container {
   const publicDir = resolvePublicDir(env);
 
   const access = new AccessGuard(new SqliteOwnershipRepository(db));
-  const authService = new AuthService(new SqliteUserRepository(db), new PasswordService(), new TokenService(env.JWT_SECRET), {
-    allowRegistration: env.ALLOW_REGISTRATION,
-  });
+  const users = new SqliteUserRepository(db);
+  const verification = new EmailVerificationService(users, emailSenderFor(env), appUrlOf(env));
+  const authService = new AuthService(
+    { users, passwords: new PasswordService(), tokens: new TokenService(env.JWT_SECRET), verification, emailDomains: new DnsEmailDomainChecker() },
+    { allowRegistration: env.ALLOW_REGISTRATION },
+  );
   const routineService = new RoutineService(new SqliteRoutineRepository(db), access);
   const dayService = new WorkoutDayService(new SqliteWorkoutDayRepository(db), access);
   const catalogService = new CatalogService(new SqliteCatalogRepository(db));
@@ -70,7 +83,8 @@ export function buildContainer(env: Env): Container {
     trustProxy: env.TRUST_PROXY,
     requireAuth: authenticate(authService),
     controllers: {
-      auth: new AuthController(authService),
+      // Same origin in production (CORS_ORIGIN unset) -> relative redirect after confirming.
+      auth: new AuthController(authService, verification, env.CORS_ORIGIN ?? ''),
       routine: new RoutineController(routineService),
       workoutDay: new WorkoutDayController(dayService),
       dayExercise: new DayExerciseController(exerciseService),

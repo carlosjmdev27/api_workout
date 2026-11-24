@@ -15,6 +15,8 @@ export interface CatalogExercise {
 export interface User {
   id: string;
   email: string;
+  /** Unique login name (lowercase); the login accepts it or the email. */
+  username: string;
   name: string;
   createdAt: string;
   /** Current body weight in `weightUnit`, or null if not set. */
@@ -23,7 +25,16 @@ export interface User {
   weightUnit: WeightUnit;
 }
 
-/** Answer of register / login. */
+/**
+ * Answer of register: no session yet, the email must be confirmed first.
+ * `emailSent` false = the account exists but the email failed (the user can ask again).
+ */
+export interface RegisterResponse {
+  email: string;
+  emailSent: boolean;
+}
+
+/** Answer of login. */
 export interface AuthResponse {
   token: string;
   user: User;

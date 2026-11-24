@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       state,
       recheck,
       login: async (input: LoginInput) => start(await authApi.login(input)),
-      register: async (input: RegisterInput) => start(await authApi.register(input)),
+      register: (input: RegisterInput) => authApi.register(input),
       logout: () => {
         clearToken();
         queryClient.clear();

@@ -43,9 +43,27 @@ const envSchema = z.object({
   ALLOW_REGISTRATION: z.stringbool().default(true),
   /** Reverse proxies in front of the API (1 behind nginx in Docker), so rate limiting sees the real IP. */
   TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
+  /**
+   * Public URL of the app, used to build the email confirmation links
+   * (`${APP_URL}/api/auth/verify-email?token=...`). Required in production.
+   */
+  APP_URL: optional(z.url()),
+  /** Resend API key. Without it the confirmation emails are printed to the server log. Secret. */
+  RESEND_API_KEY: optional(z.string().min(10)),
+  /** Sender of the emails. resend.dev only delivers to the Resend account's own address. */
+  EMAIL_FROM: z.string().min(3).default('AuraWorkout <onboarding@resend.dev>'),
+}).superRefine((env, ctx) => {
+  if (env.NODE_ENV === 'production' && !env.APP_URL) {
+    ctx.addIssue({ code: 'custom', path: ['APP_URL'], message: 'APP_URL is required in production (public URL for the email links)' });
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+/** Base of the links sent by email: APP_URL, or this API itself during development. */
+export function appUrlOf(env: Env): string {
+  return env.APP_URL ?? `http://localhost:${env.PORT}`;
+}
 
 function loadEnv(): Env {
   const parsed = envSchema.safeParse(process.env);

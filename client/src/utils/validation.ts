@@ -46,7 +46,8 @@ function messageFor(issue: z.core.$ZodIssue): string {
     case 'invalid_value':
       return 'Opción no válida';
     case 'invalid_format':
-      return issue.format === 'email' ? 'Escribe un email válido' : 'Formato no válido';
+      if (issue.format === 'email') return 'Escribe un email válido';
+      return String(issue.path.at(-1)) === 'username' ? '3-20 letras, números o "_", sin espacios' : 'Formato no válido';
     case 'custom':
       return CUSTOM_MESSAGES[String(issue.path.at(-1))] ?? 'Valor no válido';
     default:

@@ -30,4 +30,9 @@ export const LIMITS = {
   PASSWORD_MIN: 8,
   /** bcrypt only uses the first 72 bytes: longer passwords are rejected, not silently cut. */
   PASSWORD_MAX_BYTES: 72,
+  /** Usernames: 3-20 letters, digits or "_" (stored in lowercase). */
+  USERNAME_MIN: 3,
+  USERNAME_MAX: 20,
+  /** Email confirmation links stay valid for 24 h. */
+  VERIFICATION_TTL_HOURS: 24,
 } as const;

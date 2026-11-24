@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { LoginInput, RegisterInput, User } from '@gym/shared';
+import type { LoginInput, RegisterInput, RegisterResponse, User } from '@gym/shared';
 
 export type AuthState =
   | { status: 'checking' }
@@ -15,7 +15,8 @@ export type AuthState =
 export interface AuthContextValue {
   state: AuthState;
   login: (input: LoginInput) => Promise<void>;
-  register: (input: RegisterInput) => Promise<void>;
+  /** Creates an unverified account: no session until the email is confirmed. */
+  register: (input: RegisterInput) => Promise<RegisterResponse>;
   logout: () => void;
   /** Replaces the logged-in user (after editing the profile): the header updates at once. */
   updateUser: (user: User) => void;

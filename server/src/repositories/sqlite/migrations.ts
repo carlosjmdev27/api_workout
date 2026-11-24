@@ -1,4 +1,6 @@
 import type { Database } from 'better-sqlite3';
+import { addEmailVerification } from './migration-v7.js';
+import { columnNames } from './schema-info.js';
 
 // Frozen copy of SET_TYPES as of v2: an applied migration must never change.
 // Adding a set type later requires a new migration that rebuilds the CHECK.
@@ -15,17 +17,6 @@ type Migration =
   /** Code step, for changes that must inspect the current schema first. */
   | { run: (db: Database) => void };
 
-/** Column names of a table, read with PRAGMA table_info (the table name is internal). */
-function columnNames(db: Database, table: string): Set<string> {
-  const rows: unknown = db.pragma(`table_info(${table})`);
-  const names = new Set<string>();
-  if (Array.isArray(rows)) {
-    for (const row of rows) {
-      if (typeof row === 'object' && row !== null && 'name' in row && typeof row.name === 'string') names.add(row.name);
-    }
-  }
-  return names;
-}
 
 /**
  * v6 — body weight + preferred weight unit. Only ADD COLUMN (existing rows are kept,
@@ -202,6 +193,7 @@ const MIGRATIONS: readonly Migration[] = [
   `,
   },
   { run: addUserPreferences },
+  { run: addEmailVerification },
 ];
 
 function getSchemaVersion(db: Database): number {

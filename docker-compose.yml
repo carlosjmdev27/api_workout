@@ -20,6 +20,11 @@ services:
       ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
       # nginx sits in front: trust one proxy hop so rate limiting sees the client's IP.
       TRUST_PROXY: "1"
+      # Base of the email confirmation links (the browser reaches the API through nginx).
+      APP_URL: http://localhost:${WEB_PORT:-8080}
+      # Optional, from the root .env. Without a key the links are printed in `docker compose logs backend`.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-AuraWorkout <onboarding@resend.dev>}
     volumes:
       # Persistent data: routines, sessions and catalog survive rebuilds and `down`.
       - gym-data:/app/server/database
