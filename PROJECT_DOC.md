@@ -1374,3 +1374,11 @@ Hecho con la CLI de Railway (v5.75.0), con la sesión del usuario.
 - El registro es alcanzable (la prueba con el body vacío da 400 y no crea nada) y el límite de intentos funciona detrás del proxy de Railway.
 
 **Pendiente del usuario:** crear su cuenta en la URL pública (la base de datos de Railway empieza vacía) y poner `ALLOW_REGISTRATION=false`.
+
+---
+
+## 2026-11-24 · Registro cerrado en Railway
+
+- El usuario creó su cuenta en https://apiworkout-production.up.railway.app.
+- Se cambió `ALLOW_REGISTRATION=false` con la CLI. Railway redesplegó solo (`0396e991`, SUCCESS) y retiró el despliegue anterior.
+- **Verificado:** después de retirarse el despliegue antiguo, un registro con datos válidos responde **403 `REGISTRATION_CLOSED`** y no crea nada. `/api/health` responde 200. El login de las cuentas existentes no cambia.
