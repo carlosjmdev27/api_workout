@@ -50,6 +50,12 @@ const envSchema = z.object({
   APP_URL: optional(z.url()),
   /** Resend API key. Without it the confirmation emails are printed to the server log. Secret. */
   RESEND_API_KEY: optional(z.string().min(10)),
+  /**
+   * true (default): new accounts must confirm their email before logging in.
+   * false: no confirmation email (e.g. while there is no verified sender domain in Resend);
+   * the MX check still applies and pending accounts can log in.
+   */
+  REQUIRE_EMAIL_VERIFICATION: z.stringbool().default(true),
   /** Sender of the emails. resend.dev only delivers to the Resend account's own address. */
   EMAIL_FROM: z.string().min(3).default('AuraWorkout <onboarding@resend.dev>'),
 }).superRefine((env, ctx) => {

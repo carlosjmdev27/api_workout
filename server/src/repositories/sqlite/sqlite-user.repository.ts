@@ -48,13 +48,14 @@ export class SqliteUserRepository implements UserRepository {
   private readonly stmt: {
     findByIdentifier: Statement<{ identifier: string }, UserRow>;
     findById: Statement<[string], UserRow>;
-    insert: Statement<Omit<UserRow, 'body_weight' | 'weight_unit'> & VerificationTicket>;
+    insert: Statement<Omit<UserRow, 'body_weight' | 'weight_unit'> & { tokenHash: string | null; expiresAt: number | null }>;
     count: Statement<[], { n: number }>;
     claim: Statement<[string]>[];
     updateProfile: Statement<ProfileData & { id: string }>;
     updateHash: Statement<{ id: string; hash: string }>;
     setVerification: Statement<VerificationTicket & { id: string }>;
     confirm: Statement<{ tokenHash: string; now: number }>;
+    markVerified: Statement<[string]>;
   };
 
   constructor(db: Database) {
@@ -86,6 +87,9 @@ export class SqliteUserRepository implements UserRepository {
       confirm: db.prepare(
         `UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL
          WHERE verification_token = @tokenHash AND verification_expires > @now`,
+      ),
+      markVerified: db.prepare(
+        'UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?',
       ),
     };
   }
@@ -128,6 +132,10 @@ export class SqliteUserRepository implements UserRepository {
     return this.stmt.confirm.run({ tokenHash, now }).changes > 0;
   }
 
+  async markEmailVerified(id: string): Promise<void> {
+    this.stmt.markVerified.run(id);
+  }
+
   async create(record: NewUserRecord): Promise<CreateUserResult> {
     const row = {
       id: randomUUID(),
@@ -136,8 +144,10 @@ export class SqliteUserRepository implements UserRepository {
       password_hash: record.passwordHash,
       name: record.name,
       created_at: new Date().toISOString(),
-      email_verified: 0,
-      ...record.verification,
+      // No pending confirmation = created already verified (verification switched off).
+      email_verified: record.verification ? 0 : 1,
+      tokenHash: record.verification?.tokenHash ?? null,
+      expiresAt: record.verification?.expiresAt ?? null,
     };
     try {
       // One transaction: two simultaneous first registrations cannot both claim the data.

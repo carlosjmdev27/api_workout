@@ -26,12 +26,15 @@ export interface User {
 }
 
 /**
- * Answer of register: no session yet, the email must be confirmed first.
- * `emailSent` false = the account exists but the email failed (the user can ask again).
+ * Answer of register (never a session).
+ * - verificationRequired true: confirm the email first; `emailSent` false = the account
+ *   exists but the email failed (the user can ask again).
+ * - verificationRequired false: the account is ready, the user can log in now.
  */
 export interface RegisterResponse {
   email: string;
   emailSent: boolean;
+  verificationRequired: boolean;
 }
 
 /** Answer of login. */

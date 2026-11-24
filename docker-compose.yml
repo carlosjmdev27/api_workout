@@ -25,6 +25,7 @@ services:
       # Optional, from the root .env. Without a key the links are printed in `docker compose logs backend`.
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-AuraWorkout <onboarding@resend.dev>}
+      REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
     volumes:
       # Persistent data: routines, sessions and catalog survive rebuilds and `down`.
       - gym-data:/app/server/database

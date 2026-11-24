@@ -18,8 +18,8 @@ export interface NewUserRecord {
   username: string;
   email: string;
   passwordHash: string;
-  /** New accounts start unverified, with a pending confirmation. */
-  verification: VerificationTicket;
+  /** Pending confirmation (account starts unverified), or null = created already verified. */
+  verification: VerificationTicket | null;
 }
 
 /** Unique columns that another account may already use. */
@@ -56,4 +56,6 @@ export interface UserRepository {
   setVerification(id: string, ticket: VerificationTicket): Promise<void>;
   /** Marks the email as verified if the token hash matches and has not expired. One use only. */
   confirmEmail(tokenHash: string, now: number): Promise<boolean>;
+  /** Verified without a link (only when verification is switched off); clears any pending token. */
+  markEmailVerified(id: string): Promise<void>;
 }

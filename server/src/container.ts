@@ -68,7 +68,7 @@ export function buildContainer(env: Env): Container {
   const verification = new EmailVerificationService(users, emailSenderFor(env), appUrlOf(env));
   const authService = new AuthService(
     { users, passwords: new PasswordService(), tokens: new TokenService(env.JWT_SECRET), verification, emailDomains: new DnsEmailDomainChecker() },
-    { allowRegistration: env.ALLOW_REGISTRATION },
+    { allowRegistration: env.ALLOW_REGISTRATION, requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION },
   );
   const routineService = new RoutineService(new SqliteRoutineRepository(db), access);
   const dayService = new WorkoutDayService(new SqliteWorkoutDayRepository(db), access);

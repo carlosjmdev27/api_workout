@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type JSX } from 'react';
-import { LogIn, MailCheck, UserPlus } from 'lucide-react';
+import { CircleCheck, LogIn, MailCheck, UserPlus } from 'lucide-react';
 import { LIMITS, registerInputSchema, type RegisterResponse } from '@gym/shared';
 import { Link } from 'react-router-dom';
 import { Alert } from '../../../components/Alert';
@@ -15,8 +15,24 @@ import { ResendVerificationButton } from '../components/ResendVerificationButton
 
 const toLogin = <>¿Ya tienes cuenta? <Link to="/login" className="font-medium text-primary hover:underline">Inicia sesión</Link></>;
 
+/** Verification switched off on the server: the account is ready to use. */
+function AccountReady({ email }: { email: string }): JSX.Element {
+  return (
+    <AuthCard title="¡Cuenta creada!" subtitle="Ya puedes entrar con tu nombre de usuario o tu correo." footer={toLogin}>
+      <div className="space-y-4 text-sm">
+        <div className="flex items-start gap-3 rounded-lg bg-primary/10 p-3 text-foreground">
+          <CircleCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+          <p>Tu cuenta con <strong className="break-all">{email}</strong> está lista.</p>
+        </div>
+        <LinkButton to="/login" icon={LogIn}>Iniciar sesión</LinkButton>
+      </div>
+    </AuthCard>
+  );
+}
+
 /** After sign-up: the account exists but stays locked until the emailed link is opened. */
 function CheckInbox({ result }: { result: RegisterResponse }): JSX.Element {
+  if (!result.verificationRequired) return <AccountReady email={result.email} />;
   return (
     <AuthCard title="Revisa tu bandeja de entrada" subtitle="Solo falta confirmar tu correo para activar la cuenta." footer={toLogin}>
       <div className="space-y-4 text-sm">

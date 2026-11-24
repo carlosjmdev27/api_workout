@@ -65,7 +65,7 @@ Revisar esta lista al empezar cada tarea.
 | 6 | **Gestionar los ejercicios propios del catálogo** (renombrar, cambiar el grupo muscular, borrar). Hoy un ejercicio mal clasificado queda así para siempre. | Media | v4 |
 | 7 | **Progresión por ejercicio entre tablas** usando `catalog_exercise_id` (p. ej. "Press de banca" en Torso A y Torso B como un mismo ejercicio). El vínculo ya existe; falta la vista. | Baja (mejora) | v4 |
 | 8 | **Dividir el bundle del cliente** (`import()` por página). 🟡 **Parcial** (2026-11-24): el historial (con Recharts, 125 kB gzip) ya se carga bajo demanda. El chunk principal sigue en 545 kB (168 kB gzip) y Vite sigue avisando. Siguiente paso: cargar también bajo demanda el entrenamiento y el resumen. | Baja | v5 |
-| 11 | **Dominio propio para los correos (Resend).** Hoy `EMAIL_FROM` es `AuraWorkout <onboarding@resend.dev>`, que solo entrega correos al email de la cuenta de Resend del usuario. Es suficiente mientras el registro esté cerrado y la app sea de uso personal (decisión del usuario, 2026-11-24). Se intentó `auraworkout.com`: en Resend sale "Checking DNS", pero el dominio sigue aparcado en HugeDomains/NameBright (todos sus nombres apuntan a `traff-https.hugedomains.com`) y no tiene los registros DKIM/SPF/MX de Resend. **Para cerrarlo:** tener un dominio propio, añadir en su DNS los registros que indica Resend, esperar a **Verified** y cambiar `EMAIL_FROM` en Railway (sin tocar código). | Baja (necesaria antes de abrir el registro a otras personas) | Fase 17 || 4 | Avisos de `picomatch` (GHSA-fc5q-39xc-vjpf) en dependencias de desarrollo. El 2026-11-19 `npm audit` ya no los marca: **0 vulnerabilidades**, aunque seguimos en `picomatch@4.0.7`. No hubo cambio por nuestra parte; lo más probable es que se revisara el aviso. Vigilar en cada auditoría. | Baja | Fase 1 |
+| 11 | **Dominio propio para los correos (Resend).** Hoy `EMAIL_FROM` es `AuraWorkout <onboarding@resend.dev>`, que solo entrega correos al email de la cuenta de Resend del usuario. Con el registro abierto, Resend rechaza (403) los correos a otras personas, así que desde el 2026-11-24 Railway funciona con `REQUIRE_EMAIL_VERIFICATION=false` (decisión del usuario). Se intentó `auraworkout.com`: en Resend sale "Checking DNS", pero el dominio sigue aparcado en HugeDomains/NameBright (todos sus nombres apuntan a `traff-https.hugedomains.com`) y no tiene los registros DKIM/SPF/MX de Resend. **Para cerrarlo:** tener un dominio propio, añadir en su DNS los registros que indica Resend, esperar a **Verified** y cambiar `EMAIL_FROM` en Railway (sin tocar código). | Baja (necesaria antes de abrir el registro a otras personas) | Fase 17 || 4 | Avisos de `picomatch` (GHSA-fc5q-39xc-vjpf) en dependencias de desarrollo. El 2026-11-19 `npm audit` ya no los marca: **0 vulnerabilidades**, aunque seguimos en `picomatch@4.0.7`. No hubo cambio por nuestra parte; lo más probable es que se revisara el aviso. Vigilar en cada auditoría. | Baja | Fase 1 |
 
 **Detalle del pendiente #5: privacidad de `PROJECT_SPEC.md`, `PROJECT_DOC.md` e `INSTRUCCIONESDEEJECUCION.md`**
 
@@ -1840,3 +1840,43 @@ La redirección tras confirmar usa `CORS_ORIGIN` si existe: Vite en desarrollo, 
 | Capturas | Pantalla de confirmación (oscuro, móvil); login sin verificar (claro, escritorio); banner de confirmado (claro, móvil) |
 
 **Incidencia del test:** la primera pasada de la API superó los 10 registros por IP del limitador; es el comportamiento correcto. Se reordenó el test y se reinició la API de prueba.
+
+---
+
+## 2026-11-24 · Verificación de email desactivable (`REQUIRE_EMAIL_VERIFICATION`)
+
+**Problema detectado en producción:**
+- Con el registro abierto, otras personas no podían usar su cuenta.
+- Los registros de Railway mostraban `Resend answered 403: "You can only send testing emails to your own email address…"`. Con el remitente `onboarding@resend.dev`, Resend solo entrega correos al dueño de la cuenta.
+- Esas cuentas quedaban creadas **sin confirmar**: no podían entrar (403) ni volver a registrarse (409). Hubo 2 intentos así.
+
+**Solución elegida por el usuario** (opción 2, hasta tener un dominio propio, pendiente #11): una variable nueva, `REQUIRE_EMAIL_VERIFICATION`, que vale `true` por defecto.
+
+| Valor | Registro | Login |
+|-------|----------|-------|
+| `true` (por defecto: local y Docker) | Igual que en la Fase 17: cuenta sin confirmar, correo con el enlace y pantalla "Revisa tu bandeja de entrada". | Contraseña correcta sin confirmar → 403 `EMAIL_NOT_VERIFIED`. |
+| `false` (Railway, de momento) | **Se mantiene la comprobación de MX.** La cuenta se crea **ya verificada**, no se envía ningún correo y la respuesta es `{ verificationRequired: false, emailSent: false }`. La interfaz muestra **"¡Cuenta creada!"** con el botón "Iniciar sesión". | Una cuenta pendiente de antes (como las 2 de Railway) **entra con su contraseña correcta y queda verificada**, con el token pendiente borrado. Con la contraseña mal sigue siendo 401 y no cambia nada. |
+
+**Consecuencias:**
+- Con `false`, alguien podría registrarse con un email real que no es suyo. El dominio sí se comprueba, así que no puede usar uno inventado. Es aceptable para una app de uso entre conocidos.
+- Las cuentas creadas con `false` quedan verificadas: al volver a `true` no se bloquean.
+- Para volver a exigir la confirmación (cuando haya un dominio verificado en Resend), basta con cambiar `EMAIL_FROM` y poner `REQUIRE_EMAIL_VERIFICATION=true` en Railway, sin tocar código.
+
+**Cambios técnicos:**
+- `AuthOptions.requireEmailVerification`.
+- `NewUserRecord.verification` admite `null` (la cuenta se crea verificada).
+- Nuevo `UserRepository.markEmailVerified`.
+- `RegisterResponse.verificationRequired`.
+- Vista `AccountReady` en el registro.
+- La variable está en `docker-compose.yml` y en los dos `.env.example`.
+
+**Verificación:**
+- `npm run check` ✅.
+- Con `false` (API e interfaz aisladas, 11 comprobaciones ✅):
+  - el dominio inventado sigue rechazándose;
+  - el registro responde 201, la cuenta queda verificada y no se intenta enviar ningún correo;
+  - se puede entrar al momento;
+  - una cuenta pendiente, con la contraseña mal, da 401 y sigue sin verificar; con la buena, da 200 y queda verificada;
+  - la interfaz muestra "¡Cuenta creada!" y el login con el nombre de usuario funciona;
+  - sin errores de ejecución.
+- Con `true`: la prueba completa de la API de la Fase 17 vuelve a pasar entera ✅.

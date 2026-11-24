@@ -8,6 +8,8 @@ import type { EmailVerificationService } from './verification.service.js';
 
 export interface AuthOptions {
   allowRegistration: boolean;
+  /** false: no confirmation email; new and pending accounts can log in directly. */
+  requireEmailVerification: boolean;
 }
 
 export interface AuthDependencies {
@@ -40,32 +42,44 @@ export class AuthService {
     this.options = options;
   }
 
-  /** Creates an UNVERIFIED account and emails the confirmation link. No session yet. */
+  /**
+   * Creates the account. With verification required (default) it starts UNVERIFIED and the
+   * confirmation link is emailed; otherwise it is created verified and no email is sent.
+   * The MX check applies in both modes. No session yet in either case.
+   */
   async register(input: RegisterInput): Promise<RegisterResponse> {
     if (!this.options.allowRegistration) {
       throw new ForbiddenError('REGISTRATION_CLOSED', 'New accounts cannot be created');
     }
     await this.assertEmailCanReceiveMail(input.email);
-    const { token, ticket } = this.deps.verification.newTicket();
+    const required = this.options.requireEmailVerification;
+    const pending = required ? this.deps.verification.newTicket() : null;
     const passwordHash = await this.deps.passwords.hash(input.password);
     const { name, username, email } = input; // The plain password never goes further than here.
-    const created = await this.deps.users.create({ name, username, email, passwordHash, verification: ticket });
+    const created = await this.deps.users.create({ name, username, email, passwordHash, verification: pending?.ticket ?? null });
     if (created.status === 'conflict') throw taken(created.field);
     if (created.claimedLegacyData) {
       console.log(`First account created: existing routines and history assigned to user ${created.user.id}`);
     }
-    const emailSent = await this.deps.verification.send(created.user, token);
-    return { email: created.user.email, emailSent };
+    const emailSent = pending ? await this.deps.verification.send(created.user, pending.token) : false;
+    return { email: created.user.email, emailSent, verificationRequired: required };
   }
 
-  /** Email OR username + password. A correct password on an unconfirmed account -> 403. */
+  /**
+   * Email OR username + password. A correct password on an unconfirmed account -> 403,
+   * unless verification is switched off: then the account is marked verified on the way in
+   * (accounts created while it was required are not left locked out).
+   */
   async login(input: LoginInput): Promise<AuthResponse> {
     const found = await this.deps.users.findByIdentifier(input.identifier);
     const ok = await this.deps.passwords.matches(input.password, found?.passwordHash ?? null);
     if (!found || !ok) throw invalidCredentials();
     // Only after the password check: this answer cannot be used to probe which accounts exist.
     if (!found.emailVerified) {
-      throw new ForbiddenError('EMAIL_NOT_VERIFIED', 'Confirm your email address before logging in');
+      if (this.options.requireEmailVerification) {
+        throw new ForbiddenError('EMAIL_NOT_VERIFIED', 'Confirm your email address before logging in');
+      }
+      await this.deps.users.markEmailVerified(found.id);
     }
     // Explicit allowlist: the hash and other private columns never leave this service.
     const { id, email, username, name, createdAt, bodyWeight, weightUnit } = found;
