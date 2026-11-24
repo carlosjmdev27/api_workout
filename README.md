@@ -1,4 +1,4 @@
-# Gym Routines
+# AuraWorkout
 
 Aplicación web para crear rutinas de gimnasio, entrenar con ellas y seguir la progresión.
 

@@ -18,7 +18,7 @@ export function Layout({ banner, actions }: LayoutProps): JSX.Element {
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between gap-3 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2 font-semibold text-slate-900">
             <Dumbbell className="h-6 w-6 text-indigo-600" aria-hidden="true" />
-            Gym Routines
+            AuraWorkout
           </Link>
           {actions}
         </div>

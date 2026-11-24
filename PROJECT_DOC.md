@@ -34,6 +34,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Actualización §13 de la spec (despliegue en Railway: imagen única con Express sirviendo web + API):** ✅ Desplegada (2026-11-24) en https://apiworkout-production.up.railway.app
 
+**Fase 11 de la spec (rebranding a AuraWorkout y rediseño del listado de rutinas):** ✅ Completada (2026-11-24).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -1382,3 +1384,43 @@ Hecho con la CLI de Railway (v5.75.0), con la sesión del usuario.
 - El usuario creó su cuenta en https://apiworkout-production.up.railway.app.
 - Se cambió `ALLOW_REGISTRATION=false` con la CLI. Railway redesplegó solo (`0396e991`, SUCCESS) y retiró el despliegue anterior.
 - **Verificado:** después de retirarse el despliegue antiguo, un registro con datos válidos responde **403 `REGISTRATION_CLOSED`** y no crea nada. `/api/health` responde 200. El login de las cuentas existentes no cambia.
+
+---
+
+## 2026-11-24 · Fase 11: AuraWorkout y nuevo listado de rutinas
+
+### Rebranding
+
+- **"Gym Routines" → "AuraWorkout"** en:
+  - la barra superior (`Layout`) y la cabecera de login y registro (`AuthCard`);
+  - el `<title>` de `client/index.html` y el sufijo de los títulos de pestaña (`useDocumentTitle`), por ejemplo "My Workouts · AuraWorkout";
+  - el título del `README`.
+- No existe `manifest.json` ni otros metadatos con el nombre anterior.
+- **No se cambian a propósito:**
+  - `name: gym-routines` en `docker-compose.yml`: del nombre del proyecto Compose sale el volumen `gym-routines_gym-data`, y cambiarlo crearía uno nuevo y vacío, de modo que se "perderían" los datos de Docker.
+  - El nombre interno del paquete `@gym/shared` y las claves de `localStorage` (`gym_auth_token`…): cambiarlas cerraría las sesiones y descartaría los entrenamientos en curso.
+
+### Listado de rutinas (`RoutineListPage`)
+
+| Estado | Antes | Ahora |
+|--------|-------|-------|
+| Sin rutinas | Título "Mis rutinas" + botón "Nueva rutina" + tarjeta vacía con "Crear rutina" (dos acciones iguales) | **Solo la tarjeta vacía** con un único botón **Crear rutina**. El título no se ve, pero queda un `h1` "My Workouts" `sr-only` para lectores de pantalla |
+| Con rutinas | Título "Mis rutinas" + botón "Nueva rutina" arriba | Título **"My Workouts"**, sin botón arriba, y **`AddWorkoutCard`** al final del grid |
+| Cargando / error | Título visible | Sin título hasta conocer la lista: un usuario nuevo no lo ve aparecer y desaparecer |
+
+- **`AddWorkoutCard`:** enlace a `/routines/new` con borde discontinuo, *hover* sutil (borde y fondo índigo) e icono + "Nueva rutina" centrados.
+- El grid usa `auto-rows-fr`: todas las filas tienen la misma altura, así que la tarjeta de añadir mide **exactamente** lo mismo que las rutinas, aunque quede sola en una fila nueva.
+- Los enlaces "← Mis rutinas" de la rutina y del formulario pasan a "← My Workouts", para nombrar igual la página a la que llevan.
+- **Creación de rutinas sin cambios:** misma ruta `/routines/new`, mismo formulario y mismas mutaciones.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` | ✅ |
+| Interfaz con Edge vía CDP (API y base de datos temporales) | ✅ 9/9: AuraWorkout en el login, la cabecera y la pestaña; estado vacío sin título visible y con una sola acción (y su `h1` accesible); **crear la primera rutina desde la interfaz**; con rutinas, el título "My Workouts", sin botón arriba y la tarjeta de añadir al final; misma altura (128 px); con 3 rutinas + la tarjeta, todas las filas iguales (142 px); la tarjeta abre el formulario |
+| Capturas | Estado vacío en escritorio; grid en escritorio y en móvil (390 px) |
+
+**Incidencias (no eran fallos de la app):**
+- Un script de reemplazo en PowerShell trató mal los pares de textos y estropeó `AuthCard.tsx` (cambió letras sueltas). Se detectó en el `git diff` antes de compilar y se restauró con `git checkout`; los cambios se rehicieron con el editor.
+- En el test, `innerText` incluye el `h1` `sr-only` y la comprobación del enlace "atrás" se hacía antes de que se pintara el formulario.

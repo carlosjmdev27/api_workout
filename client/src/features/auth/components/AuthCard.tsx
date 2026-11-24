@@ -15,7 +15,7 @@ export function AuthCard({ title, subtitle, children, footer }: AuthCardProps): 
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-10">
       <div className="mb-6 flex items-center gap-2 text-lg font-semibold text-slate-900">
         <Dumbbell className="h-7 w-7 text-indigo-600" aria-hidden="true" />
-        Gym Routines
+        AuraWorkout
       </div>
       <main className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-xl font-bold text-slate-900">{title}</h1>

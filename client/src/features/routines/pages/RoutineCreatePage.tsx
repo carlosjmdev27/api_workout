@@ -13,7 +13,7 @@ export function RoutineCreatePage(): JSX.Element {
 
   return (
     <>
-      <PageHeader title="Nueva rutina" backTo="/" backLabel="Mis rutinas" />
+      <PageHeader title="Nueva rutina" backTo="/" backLabel="My Workouts" />
       <RoutineForm
         initialValues={EMPTY_ROUTINE}
         submitLabel="Crear rutina"

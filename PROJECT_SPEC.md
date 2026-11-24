@@ -447,3 +447,25 @@ Crear un `Dockerfile` limpio en la raíz del proyecto (manteniendo el `docker-co
 ### 3. Verificación Final antes del Push
 - Comprobar que la imagen se construye sin errores localmente ejecutando `docker build -t gym-app-prod .`.
 - Entregar un breve resumen con las variables de entorno exactas que debo pegar en el panel de **Railway** (`PORT`, `NODE_ENV`, `DATABASE_PATH`, `JWT_SECRET`, `ALLOW_REGISTRATION`) y la ruta del volumen (`/app/data`).
+
+---
+
+## ✨ Fase 11: Rebranding a AuraWorkout y Refinamiento del Dashboard de Rutinas
+
+### 1. Rebranding General (`AuraWorkout`)
+- **Objetivo**: Actualizar la identidad visual y textual de la aplicación de `"Gym Routines"` a **`"AuraWorkout"`**.
+- **Tareas**:
+  1. Cambiar el título principal en la barra de navegación (`Navbar` / `Header`) y en las pantallas de `Login` / `Register` por **`AuraWorkout`**.
+  2. Actualizar el `<title>` del documento HTML (`frontend/index.html`) a `AuraWorkout` y revisar cualquier metadato, `manifest.json` (si existe) o texto de bienvenida que aún mencione `"Gym Routines"`.
+
+### 2. Rediseño Condicional del Listado de Rutinas (`Empty State` vs. `Grid de Rutinas`)
+- **Objetivo**: Eliminar botones redundantes y mejorar la estética y claridad visual tanto cuando el usuario es nuevo como cuando ya tiene rutinas creadas.
+- **Tareas**:
+  1. **Eliminar el botón superior `"Nueva Rutina"`**:
+     - Quitar por completo el botón `"Nueva Rutina"` de la cabecera de la sección en todos los estados (tanto con 0 rutinas como con rutinas ya creadas).
+  2. **Estado Vacío (`routines.length === 0`)**:
+     - **Ocultar el título** de la sección (`My Workouts` no debe renderizarse cuando no hay rutinas).
+     - Mantener únicamente la tarjeta/estado vacío centralizado con un único botón claro para crear la primera rutina, evitando cualquier duplicidad de acciones.
+  3. **Estado Con Rutinas (`routines.length > 0`)**:
+     - Mostrar el título de la sección cambiado de `"Mis Rutinas"` a **`"My Workouts"`**.
+     - Renderizar al final del grid/lista de tarjetas de rutinas (justo a continuación de la última rutina creada) una **tarjeta de acción estética (`AddWorkoutCard`)** con borde discontinuo (`border-dashed`), efecto *hover* sutil y un icono/botón centrado para **crear una nueva rutina**, manteniendo exactamente la misma altura y proporciones que las tarjetas de rutina adyacentes.
