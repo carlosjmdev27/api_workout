@@ -109,9 +109,9 @@
   html {
     @apply font-sans;
   }
-  /* No elastic bounce / scroll chaining on mobile when there is nothing to scroll (Fase 14). */
-  html,
-  body {
-    @apply overscroll-y-none;
-  }
+  /*
+   * No overscroll-behavior here on purpose (v7 hotfix of Fase 14): blocking it also disabled
+   * the native pull-to-refresh on mobile. Short views stay scroll-free thanks to the
+   * min-h-[100dvh] flex layout, not to overscroll rules.
+   */
 }

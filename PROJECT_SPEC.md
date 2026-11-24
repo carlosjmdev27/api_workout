@@ -581,3 +581,9 @@ Ampliar la vista de perfil (`/profile`) para que el usuario pueda registrar su *
      - Encabezados de columnas y placeholders de peso en la tabla de rutinas y entrenamiento activo.
      - Etiquetas y tooltips de las gráficas de progreso (`Recharts`) en el historial.
    - *(Nota: Guardar los valores numéricos tal cual los introduce el usuario en la unidad activa sin conversiones automáticas destructivas sobre registros históricos previos).*
+
+--- Actualizacion v7
+
+### 4. Ajuste de Pull-to-Refresh en Móvil (Hotfix Fase 14)
+- Eliminar `overscroll-behavior-y: none` / `overscroll-y-none` de `html`, `body` y contenedores principales para restaurar el gesto nativo de arrastrar hacia abajo para recargar la página (*pull-to-refresh*) en navegadores móviles (iOS Safari y Android Chrome).
+- Mantener únicamente la arquitectura `min-h-[100dvh]` con `flex flex-col` y limpieza de márgenes/paddings sobrantes para evitar el scroll vertical innecesario en vistas cortas.

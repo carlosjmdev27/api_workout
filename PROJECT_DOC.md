@@ -46,6 +46,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Fase 16 de la spec (peso corporal y unidad de peso global kg/lb):** ✅ Completada (2026-11-24). Esquema de la base de datos en **v6**.
 
+**Actualización v7 de la spec (hotfix de la Fase 14: pull-to-refresh):** ✅ Completada (2026-11-24).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -1727,3 +1729,24 @@ Hecho con la CLI de Railway (v5.75.0), con la sesión del usuario.
 | API aislada (19 comprobaciones) | ✅ Los campos llegan en register, login y `/me`; guardar 80,5 lb y borrarlo con `null`; 400 con `stone`, `KG`, 19,9, 500,1, negativo, texto o campos ausentes; 20 y 500 aceptados; los rechazos no cambian nada; peso 1500 aceptado y 2001 rechazado; **cambiar de unidad no convierte** los pesos guardados |
 | Interfaz con Edge vía CDP (11 flujos) | ✅ "Peso (kg)" por defecto; error de rango visible; elegir lb + "82,5" guarda y se mantiene al recargar; rutina, entrenamiento activo e historial pasan a lb **con los mismos números** y sin ningún "kg"; vaciar el peso y volver a kg guarda `null`; sin errores de ejecución |
 | Capturas | Perfil en oscuro (móvil) y claro (escritorio); historial en lb |
+
+---
+
+## 2026-11-24 · Actualización v7: recuperar el "arrastrar para recargar" en móvil (hotfix de la Fase 14)
+
+- **Problema:** la regla `overscroll-y-none` de la Fase 14 en `html` y `body` quitaba el rebote, pero también **anulaba el gesto nativo de arrastrar hacia abajo para recargar** (pull-to-refresh) en Safari iOS y Chrome Android.
+- **Cambio:** se elimina la regla de `index.css` (era el único `overscroll` del cliente). Se deja un comentario explicando por qué no debe volver.
+- **Se mantiene** lo que de verdad evita el scroll fantasma: el layout `flex flex-col min-h-[100dvh]` con `main` en `flex-1`, sin márgenes ni paddings sobrantes. El rebote elástico vuelve a verse en las vistas cortas, pero solo como gesto: no hay contenido extra que desplazar.
+- **Entrenamiento activo:** recargar la página es seguro. El borrador y el cronómetro siguen en `localStorage` (Fase 3 / v3), así que un pull-to-refresh accidental en el gimnasio no pierde nada.
+
+### Verificación (Edge headless, 390×844 en modo móvil, API aislada)
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` | ✅ |
+| `overscroll-behavior-y` en `html` y `body` | ✅ `auto` (pull-to-refresh permitido); ningún elemento lo bloquea |
+| Login, dashboard vacío y con 2 rutinas | ✅ Sin scroll: alto del documento = 844 = alto de la pantalla |
+| Dashboard con 10 rutinas | ✅ Scroll normal (1729 px, desplaza 885) |
+| Errores de ejecución | ✅ Ninguno |
+
+**Limitación:** el gesto de pull-to-refresh no se puede simular en un navegador headless. La prueba definitiva es abrir la app en el móvil y arrastrar hacia abajo.
