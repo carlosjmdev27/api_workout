@@ -25,7 +25,8 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`${buttonClasses(variant, size)} ${className}`}
+      data-slot="button"
+      className={buttonClasses(variant, size, className)}
       {...rest}
     >
       {loading ? (

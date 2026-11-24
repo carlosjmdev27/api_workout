@@ -28,7 +28,7 @@ export function ConfirmDialog({
   return (
     <Modal open={open} title={title} onClose={onCancel}>
       <div className="space-y-4">
-        <p className="text-sm text-slate-600">{message}</p>
+        <p className="text-sm text-muted-foreground">{message}</p>
         {error && <Alert message={error} />}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="secondary" onClick={onCancel} disabled={loading}>

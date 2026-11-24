@@ -469,3 +469,22 @@ Crear un `Dockerfile` limpio en la raíz del proyecto (manteniendo el `docker-co
   3. **Estado Con Rutinas (`routines.length > 0`)**:
      - Mostrar el título de la sección cambiado de `"Mis Rutinas"` a **`"My Workouts"`**.
      - Renderizar al final del grid/lista de tarjetas de rutinas (justo a continuación de la última rutina creada) una **tarjeta de acción estética (`AddWorkoutCard`)** con borde discontinuo (`border-dashed`), efecto *hover* sutil y un icono/botón centrado para **crear una nueva rutina**, manteniendo exactamente la misma altura y proporciones que las tarjetas de rutina adyacentes.
+
+     ---
+
+## 🎨 Fase 12: Rediseño UI Profesional con shadcn/ui, Lucide Icons y Recharts
+
+### 1. Stack de Interfaz (UI Kit)
+Actualizar el frontend de **AuraWorkout** integrando de forma conjunta:
+1. **Tailwind CSS + shadcn/ui**: Para un sistema de componentes consistente, accesible y moderno (botones, tarjetas, inputs numéricos, badges de tipo de serie, selectores y modales).
+2. **Lucide Icons (`lucide-react`)**: Sustituir cualquier icono genérico o texto de acción por iconos limpios y uniformes (mancuernas, temporizador, añadir, eliminar, check, historial).
+3. **Recharts (`recharts`)**: Integrar gráficas interactivas y responsivas en la vista de historial/progreso por ejercicio (evolución de peso máximo levantado y volumen total por sesión, **sin** métricas de 1RM).
+
+### 2. Línea Visual y Tema (Dark Mode Atlético)
+- **Paleta**: Fondo oscuro profundo (`#09090B`), tarjetas con elevación sutil (`#121215`), bordes finos (`#27272A`) y color de acento energético (ej. Verde lima `#A3E635` o Azul eléctrico `#3B82F6`) para los botones principales (`Empezar Entrenamiento`, `Guardar`) y series completadas.
+- **Tipografía**: Aplicar `tabular-nums` en todos los campos de peso, repeticiones y cronómetros para evitar desplazamientos visuales.
+
+### 3. Reglas de Integración (No Romper Funcionalidad)
+- **Mantener la compactación vertical (Fase 7)**: Los componentes de `shadcn/ui` (inputs, botones y filas) deben estilizarse en versión compacta (`h-8`, padding reducido) dentro de las tarjetas de ejercicios para seguir viendo varias series sin scroll excesivo.
+- **Mantener el dashboard de AuraWorkout (Fase 11)**: Conservar el título condicional `My Workouts`, la tarjeta estética final para crear nueva rutina y la ausencia de botones redundantes.
+- **Compatibilidad con Build de Producción**: Asegurar que `npm run build` en el frontend compile limpiamente sin errores de TypeScript o dependencias para no afectar al `Dockerfile` de Railway.

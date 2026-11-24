@@ -30,7 +30,7 @@ export function DayTabs({ days, selectedId, panelId, canAdd, onSelect, onAdd }: 
   };
 
   return (
-    <div className="flex items-end gap-2 border-b border-slate-200">
+    <div className="flex items-end gap-2 border-b border-border">
       <div role="tablist" aria-label="Tablas de la rutina" className="-mb-px flex min-w-0 flex-1 gap-1 overflow-x-auto">
         {days.map((day, index) => {
           const selected = day.id === selectedId;
@@ -45,14 +45,14 @@ export function DayTabs({ days, selectedId, panelId, canAdd, onSelect, onAdd }: 
               tabIndex={selected ? 0 : -1}
               onClick={() => onSelect(day.id)}
               onKeyDown={(event) => handleKeyDown(event, index)}
-              className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-indigo-600 ${
+              className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
                 selected
-                  ? 'border-indigo-600 text-indigo-700'
-                  : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:border-input hover:text-foreground'
               }`}
             >
               {day.name}
-              <span className="ml-1.5 text-xs text-slate-400">{day.exercises.length}</span>
+              <span className="ml-1.5 text-xs text-muted-foreground/70">{day.exercises.length}</span>
             </button>
           );
         })}

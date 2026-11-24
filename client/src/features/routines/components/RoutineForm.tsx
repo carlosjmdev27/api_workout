@@ -43,10 +43,10 @@ export function RoutineForm({
     <form
       noValidate
       onSubmit={handleSubmit}
-      className="space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+      className="space-y-6 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
     >
       <RoutineInfoFields values={values} errors={errors} onChange={handleChange} />
-      {hint && <p className="text-sm text-slate-500">{hint}</p>}
+      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
       <FormActions cancelTo={cancelTo} submitLabel={submitLabel} pending={pending} error={error} />
     </form>
   );

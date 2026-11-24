@@ -19,7 +19,7 @@ export function SetsTable({ sets, addLabel, addDisabled = false, onAddSet }: Set
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-500">
+        <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
           <th scope="col" className="w-12 py-1 font-medium">Serie</th>
           <th scope="col" className="py-1 font-medium">Tipo</th>
           <th scope="col" className="py-1 text-right font-medium">Peso (kg)</th>
@@ -27,14 +27,14 @@ export function SetsTable({ sets, addLabel, addDisabled = false, onAddSet }: Set
           <th scope="col" className="w-12 py-1 text-right font-medium">RIR</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-slate-50">
+      <tbody className="divide-y divide-border/40">
         {sets.map((set) => (
           <tr key={set.id}>
-            <td className={`${CELL} text-slate-500`}>{set.setNumber}</td>
+            <td className={`${CELL} text-muted-foreground`}>{set.setNumber}</td>
             <td className="py-1"><SetTypeBadge type={set.setType} compact /></td>
             <td className={`${CELL} text-right`}>{set.targetWeight === null ? '—' : formatNumber(set.targetWeight)}</td>
             <td className={`${CELL} text-right font-medium`}>{formatRepRange(set.targetRepMin, set.targetRepMax)}</td>
-            <td className={`${CELL} text-right text-slate-500`}>{set.targetRir ?? '—'}</td>
+            <td className={`${CELL} text-right text-muted-foreground`}>{set.targetRir ?? '—'}</td>
           </tr>
         ))}
       </tbody>
@@ -47,7 +47,7 @@ export function SetsTable({ sets, addLabel, addDisabled = false, onAddSet }: Set
                 onClick={onAddSet}
                 disabled={addDisabled}
                 aria-label={addLabel}
-                className="flex h-7 w-full items-center gap-1 rounded-md px-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+                className="flex h-7 w-full items-center gap-1 rounded-md px-1 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:text-muted-foreground/70 disabled:hover:bg-transparent"
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                 Añadir serie

@@ -4,10 +4,10 @@ import type { TotalsComparison } from '../compare';
 
 function Tile({ label, value, delta }: { label: string; value: string; delta?: string | null }): JSX.Element {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value}</dd>
-      {delta && <dd className="mt-0.5 text-xs tabular-nums text-slate-500">{delta} vs anterior</dd>}
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1 text-2xl font-bold tabular-nums text-foreground">{value}</dd>
+      {delta && <dd className="mt-0.5 text-xs tabular-nums text-muted-foreground">{delta} vs anterior</dd>}
     </div>
   );
 }

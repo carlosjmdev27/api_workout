@@ -22,17 +22,17 @@ export function SessionSetsList({ sets }: { sets: LoggedSet[] }): JSX.Element {
     <div className="space-y-3">
       {groupByExercise(sets).map((group) => (
         <div key={group.key}>
-          <h3 className="text-sm font-medium text-slate-800">{group.name}</h3>
+          <h3 className="text-sm font-medium text-foreground">{group.name}</h3>
           <ul className="mt-1 space-y-1 text-sm">
             {group.sets.map((set) => (
               <li key={set.id} className="flex items-center gap-2 tabular-nums">
-                <span className="w-5 text-slate-500">{set.setNumber}</span>
+                <span className="w-5 text-muted-foreground">{set.setNumber}</span>
                 <SetTypeBadge type={set.setType} />
                 <span>{set.actualWeight === null ? 'sin peso' : formatWeight(set.actualWeight)} × {set.actualReps ?? '—'}</span>
                 {set.completed ? (
-                  <Check className="h-4 w-4 text-emerald-600" aria-label="completada" />
+                  <Check className="h-4 w-4 text-primary" aria-label="completada" />
                 ) : (
-                  <span className="text-xs text-slate-400">no completada</span>
+                  <span className="text-xs text-muted-foreground/70">no completada</span>
                 )}
               </li>
             ))}

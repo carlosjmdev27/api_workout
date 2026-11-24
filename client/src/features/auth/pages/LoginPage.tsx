@@ -41,7 +41,7 @@ export function LoginPage(): JSX.Element {
     <AuthCard
       title="Iniciar sesión"
       subtitle="Entra para ver tus rutinas y tu progreso."
-      footer={<>¿No tienes cuenta? <Link to="/register" className="font-medium text-indigo-600 hover:underline">Crear cuenta</Link></>}
+      footer={<>¿No tienes cuenta? <Link to="/register" className="font-medium text-primary hover:underline">Crear cuenta</Link></>}
     >
       <form noValidate onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
         {expired && apiError === null && <Alert message="Tu sesión ha caducado. Vuelve a iniciar sesión." />}

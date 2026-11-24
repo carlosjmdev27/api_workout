@@ -7,7 +7,7 @@ Aplicación web para crear rutinas de gimnasio, entrenar con ellas y seguir la p
 - **Historial y resumen** de cada sesión: peso máximo, reps, volumen y récords.
 - **Catálogo** de 120 ejercicios en español con búsqueda sin acentos y ejercicios propios.
 
-**Stack:** React + Vite + TypeScript + Tailwind (`client/`), Express + TypeScript + SQLite (`server/`) y un paquete compartido de tipos y validación Zod (`shared/`), organizados como *npm workspaces*.
+**Stack:** React + Vite + TypeScript + Tailwind + shadcn/ui + Recharts (`client/`, tema oscuro), Express + TypeScript + SQLite (`server/`) y un paquete compartido de tipos y validación Zod (`shared/`), organizados como *npm workspaces*.
 
 ## Con Docker (recomendado para usarla)
 

@@ -74,7 +74,7 @@ export function ActionMenu({ label, actions }: ActionMenuProps): JSX.Element {
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((prev) => !prev)}
-        className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-indigo-600"
+        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
       >
         <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
       </button>
@@ -84,7 +84,7 @@ export function ActionMenu({ label, actions }: ActionMenuProps): JSX.Element {
           role="menu"
           aria-label={label}
           onKeyDown={handleKeyDown}
-          className="absolute right-0 top-full z-20 mt-1 min-w-44 rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full z-20 mt-1 min-w-44 rounded-xl border border-border bg-card py-1 shadow-lg"
         >
           {actions.map((action, index) => (
             <button
@@ -99,7 +99,7 @@ export function ActionMenu({ label, actions }: ActionMenuProps): JSX.Element {
                 action.onSelect();
               }}
               className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 ${
-                action.tone === 'danger' ? 'text-red-600 hover:bg-red-50 focus:bg-red-50' : 'text-slate-700 hover:bg-slate-100 focus:bg-slate-100'
+                action.tone === 'danger' ? 'text-destructive hover:bg-destructive/10 focus:bg-destructive/10' : 'text-foreground/90 hover:bg-muted focus:bg-muted'
               }`}
             >
               <action.icon className="h-4 w-4" aria-hidden="true" />

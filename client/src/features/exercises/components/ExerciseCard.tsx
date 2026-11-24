@@ -35,11 +35,11 @@ export function ExerciseCard({
   const { name } = exercise;
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+    <li className="rounded-xl border border-border bg-card px-3 py-2 shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-          <h3 className="min-w-0 break-words font-medium text-slate-900">
-            <span className="mr-1.5 text-sm font-semibold text-indigo-600">{exercise.order}.</span>
+          <h3 className="min-w-0 break-words font-medium text-foreground">
+            <span className="mr-1.5 text-sm font-semibold text-primary">{exercise.order}.</span>
             {name}
           </h3>
           <MuscleBadge catalogExerciseId={exercise.catalogExerciseId} />

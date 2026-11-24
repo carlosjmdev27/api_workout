@@ -61,8 +61,8 @@ export function ExerciseCombobox({ value, linkedId, error, onType, onPick }: Exe
 
   return (
     <div className="relative space-y-1">
-      <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
-        Ejercicio<span className="ml-0.5 text-red-500" aria-hidden="true">*</span>
+      <label htmlFor={inputId} className="block text-sm font-medium text-foreground/90">
+        Ejercicio<span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
       </label>
       <input
         id={inputId} role="combobox" aria-expanded={open} aria-controls={listboxId} aria-autocomplete="list"
@@ -71,7 +71,7 @@ export function ExerciseCombobox({ value, linkedId, error, onType, onPick }: Exe
         autoComplete="off" required maxLength={LIMITS.NAME_MAX} value={value} placeholder="Busca: press banca, sentadilla…"
         onChange={(event) => { onType(event.target.value); setCreating(null); setOpen(true); setActive(-1); }}
         onClick={() => setOpen(true)} onKeyDown={handleKeyDown} onBlur={handleBlur}
-        className={`block w-full rounded-lg border bg-white px-3 py-2 text-sm shadow-sm focus:outline-2 ${error ? 'border-red-400 focus:outline-red-500' : 'border-slate-300 focus:outline-indigo-600'}`}
+        className={`block w-full rounded-lg border bg-card px-3 py-2 text-sm shadow-sm focus:outline-2 ${error ? 'border-destructive focus:outline-destructive' : 'border-input focus:outline-ring'}`}
       />
       {open && (
         <CatalogListbox id={listboxId} model={model} active={active} muscle={muscle} optionId={optionId}
@@ -79,12 +79,12 @@ export function ExerciseCombobox({ value, linkedId, error, onType, onPick }: Exe
           onMuscle={(next) => { setMuscle(next); setActive(-1); }} onChoose={choose} />
       )}
       {linked && !creating && (
-        <p className="flex items-center gap-1 text-xs text-slate-500">
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
           Del catálogo · {linked.muscleGroup}{linked.equipment ? ` · ${linked.equipment}` : ''}
         </p>
       )}
-      {error && <p id={`${inputId}-error`} className="text-xs text-red-600">{error}</p>}
+      {error && <p id={`${inputId}-error`} className="text-xs text-destructive">{error}</p>}
       {creating && (
         <QuickCreateExercise name={creating}
           onCreated={(exercise) => { setCreating(null); onPick(exercise); }} onCancel={() => setCreating(null)} />

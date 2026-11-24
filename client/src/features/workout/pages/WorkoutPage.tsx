@@ -46,7 +46,7 @@ function ActiveWorkout({ day, lastSession }: { day: WorkoutDayDetail; lastSessio
     <div className="pb-28">
       <WorkoutTopBar dayName={day.name} routineName={day.routineName} startedAt={session.startedAt} completed={session.completedCount} total={session.totalCount} onCancel={() => setDialog('cancel')} />
 
-      <p className="mb-4 text-sm text-slate-500">
+      <p className="mb-4 text-sm text-muted-foreground">
         {session.resumed ? 'Entrenamiento reanudado: el cronómetro sigue desde que empezaste. ' : ''}
         {lastSession ? 'La columna «Anterior» muestra lo que hiciste la última vez.' : 'Primera sesión de esta tabla.'}
       </p>
@@ -59,11 +59,11 @@ function ActiveWorkout({ day, lastSession }: { day: WorkoutDayDetail; lastSessio
         <TextAreaField label="Notas del entrenamiento" rows={2} maxLength={LIMITS.NOTES_MAX} value={session.notes} placeholder="Sensaciones, molestias, cambios…" onChange={(event) => session.setNotes(event.target.value)} />
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur">
         <div className="mx-auto max-w-4xl space-y-2">
           {session.formError && <Alert message={session.formError} />}
           {createMutation.isError && <Alert message={getErrorMessage(createMutation.error)} details={getErrorDetails(createMutation.error)} />}
-          <Button icon={Flag} className="w-full py-3 text-base" loading={createMutation.isPending} onClick={finish}>
+          <Button icon={Flag} size="xl" className="w-full"loading={createMutation.isPending} onClick={finish}>
             Terminar entrenamiento
           </Button>
         </div>
@@ -78,8 +78,8 @@ function ActiveWorkout({ day, lastSession }: { day: WorkoutDayDetail; lastSessio
 /** Another day is in progress: never overwrite it silently. */
 function OtherWorkoutInProgress({ dayName, otherDayId }: { dayName: string; otherDayId: string }): JSX.Element {
   return (
-    <div className="mx-auto max-w-md space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center">
-      <p className="text-sm text-amber-900">Tienes un entrenamiento en curso de <strong>{dayName}</strong>. Solo puede haber uno activo a la vez.</p>
+    <div className="mx-auto max-w-md space-y-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-center">
+      <p className="text-sm text-amber-200">Tienes un entrenamiento en curso de <strong>{dayName}</strong>. Solo puede haber uno activo a la vez.</p>
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
         <LinkButton to={activeWorkoutPath(otherDayId)} icon={Play}>Reanudar {dayName}</LinkButton>
         <Button variant="secondary" icon={Trash2} onClick={clearActiveWorkout}>Descartarlo y empezar esta</Button>

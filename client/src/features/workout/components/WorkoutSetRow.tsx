@@ -10,14 +10,14 @@ import type { WorkoutRow } from '../workout-model';
 /** "100 × 7": what was done last time for this set (details in the tooltip). */
 function PreviousCell({ row }: { row: WorkoutRow }): JSX.Element {
   const previous = row.previous;
-  if (!previous) return <span className="text-slate-400">—</span>;
+  if (!previous) return <span className="text-muted-foreground/70">—</span>;
   const weight = previous.actualWeight === null ? '—' : formatNumber(previous.actualWeight);
   const notes = [
     previous.setType !== row.setType ? SET_TYPE_LABELS[previous.setType] : '',
     previous.completed ? '' : 'no completada',
   ].filter(Boolean).join(', ');
   return (
-    <span title={notes || undefined} className={previous.completed ? 'text-slate-600' : 'italic text-slate-400'}>
+    <span title={notes || undefined} className={previous.completed ? 'text-muted-foreground' : 'italic text-muted-foreground/70'}>
       {weight} × {previous.actualReps ?? '—'}
       {notes && <span className="sr-only"> ({notes})</span>}
     </span>
@@ -48,8 +48,8 @@ function CellInput({ label, value, placeholder, error, hint, decimal, inputRef, 
       aria-invalid={error ? true : undefined}
       title={error ?? hint}
       onChange={(event) => onChange(event.target.value)}
-      className={`h-8 w-full rounded-md border bg-white px-1 text-center text-base tabular-nums placeholder:text-slate-400 focus:outline-2 ${
-        error ? 'border-red-400 focus:outline-red-500' : 'border-slate-300 focus:outline-indigo-600'
+      className={`h-8 w-full rounded-md border bg-card px-1 text-center text-base tabular-nums placeholder:text-muted-foreground/70 focus:outline-2 ${
+        error ? 'border-destructive focus:outline-destructive' : 'border-input focus:outline-ring'
       }`}
     />
   );
@@ -78,12 +78,12 @@ export function WorkoutSetRow({ row, exerciseName, entry, errors, onValue, onTog
 
   return (
     <>
-      <tr className={`transition-colors ${entry.completed ? 'bg-emerald-50' : ''}`}>
+      <tr className={`transition-colors ${entry.completed ? 'bg-primary/10' : ''}`}>
         <td className="py-1 pl-1 font-semibold tabular-nums">
           {row.isExtra ? (
-            <span className="text-indigo-600" title="Serie extra">{row.setNumber}<span className="sr-only"> (extra)</span></span>
+            <span className="text-primary" title="Serie extra">{row.setNumber}<span className="sr-only"> (extra)</span></span>
           ) : (
-            <span className="text-slate-700">{row.setNumber}</span>
+            <span className="text-foreground/90">{row.setNumber}</span>
           )}
         </td>
         <td className="py-1"><SetTypeBadge type={row.setType} compact /></td>
@@ -101,8 +101,8 @@ export function WorkoutSetRow({ row, exerciseName, entry, errors, onValue, onTog
             aria-pressed={entry.completed}
             // Toggle button: fixed, unique label; the state is conveyed by aria-pressed.
             aria-label={`${exerciseName}, serie ${row.setNumber} hecha`}
-            className={`flex h-8 w-8 items-center justify-center rounded-md border-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
-              entry.completed ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white text-slate-300 hover:border-emerald-500 hover:text-emerald-500'
+            className={`flex h-8 w-8 items-center justify-center rounded-md border-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+              entry.completed ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card text-muted-foreground/50 hover:border-primary/70 hover:text-primary/80'
             }`}
           >
             <Check className="h-4 w-4" aria-hidden="true" />
@@ -111,7 +111,7 @@ export function WorkoutSetRow({ row, exerciseName, entry, errors, onValue, onTog
       </tr>
       {errorText && (
         <tr>
-          <td colSpan={6} role="alert" className="pb-1 pl-1 text-xs text-red-600">Serie {row.setNumber}: {errorText}</td>
+          <td colSpan={6} role="alert" className="pb-1 pl-1 text-xs text-destructive">Serie {row.setNumber}: {errorText}</td>
         </tr>
       )}
     </>

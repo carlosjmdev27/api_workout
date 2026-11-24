@@ -30,7 +30,7 @@ function HistoryContent({ day, sessions }: { day: WorkoutDayDetail; sessions: Wo
         <>
           <ExerciseProgress sessions={sessions} />
           <section aria-labelledby="sessions-title" className="space-y-3">
-            <h2 id="sessions-title" className="text-lg font-semibold text-slate-900">Sesiones ({sessions.length})</h2>
+            <h2 id="sessions-title" className="text-lg font-semibold text-foreground">Sesiones ({sessions.length})</h2>
             <ol className="space-y-3">
               {sessions.map((session) => (
                 <SessionCard key={session.id} session={session} onDelete={() => setToDelete(session)} />

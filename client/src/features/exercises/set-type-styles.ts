@@ -21,10 +21,11 @@ export const SET_TYPE_SHORT: Record<SetType, string> = {
 
 /** Subtle colour per set type (full class strings so Tailwind can detect them). */
 export const SET_TYPE_STYLES: Record<SetType, string> = {
-  warmup: 'bg-sky-50 text-sky-700 ring-sky-200',
-  normal: 'bg-slate-100 text-slate-700 ring-slate-200',
-  topset: 'bg-rose-50 text-rose-700 ring-rose-200',
-  backoff: 'bg-amber-50 text-amber-800 ring-amber-200',
-  restpause: 'bg-violet-50 text-violet-700 ring-violet-200',
-  dropset: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  // Dark theme: translucent tint + light text (each ≥ 7:1 on the card colour).
+  warmup: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
+  normal: 'bg-zinc-500/15 text-zinc-300 ring-zinc-500/30',
+  topset: 'bg-rose-500/15 text-rose-300 ring-rose-500/30',
+  backoff: 'bg-amber-500/15 text-amber-300 ring-amber-500/30',
+  restpause: 'bg-violet-500/15 text-violet-300 ring-violet-500/30',
+  dropset: 'bg-teal-500/15 text-teal-300 ring-teal-500/30',
 };

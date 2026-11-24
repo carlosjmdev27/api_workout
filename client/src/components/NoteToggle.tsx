@@ -20,8 +20,8 @@ export function NoteToggleButton({ open, controls, label, onToggle }: NoteToggle
       aria-label={label}
       title={label}
       onClick={onToggle}
-      className={`rounded-lg p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-indigo-600 ${
-        open ? 'bg-amber-50 text-amber-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+      className={`rounded-lg p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
+        open ? 'bg-amber-500/10 text-amber-300' : 'text-muted-foreground/70 hover:bg-muted hover:text-foreground/90'
       }`}
     >
       <StickyNote className="h-4 w-4" aria-hidden="true" />
@@ -31,7 +31,7 @@ export function NoteToggleButton({ open, controls, label, onToggle }: NoteToggle
 
 export function NotePanel({ id, open, text }: { id: string; open: boolean; text: string }): JSX.Element {
   return (
-    <p id={id} hidden={!open} className="mt-1.5 whitespace-pre-line break-words rounded-lg bg-amber-50/70 px-2.5 py-1.5 text-sm text-slate-600">
+    <p id={id} hidden={!open} className="mt-1.5 whitespace-pre-line break-words rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-sm text-muted-foreground">
       {text}
     </p>
   );

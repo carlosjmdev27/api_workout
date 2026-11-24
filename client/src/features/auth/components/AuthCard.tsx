@@ -1,5 +1,6 @@
 import type { JSX, ReactNode } from 'react';
 import { Dumbbell } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface AuthCardProps {
   title: string;
@@ -9,20 +10,26 @@ interface AuthCardProps {
   footer: ReactNode;
 }
 
-/** Minimal centered card shared by the login and register screens. */
+/** Minimal centered shadcn/ui Card shared by the login and register screens. */
 export function AuthCard({ title, subtitle, children, footer }: AuthCardProps): JSX.Element {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-10">
-      <div className="mb-6 flex items-center gap-2 text-lg font-semibold text-slate-900">
-        <Dumbbell className="h-7 w-7 text-indigo-600" aria-hidden="true" />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
+      <div className="mb-6 flex items-center gap-2 text-lg font-semibold text-foreground">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
+          <Dumbbell className="h-5 w-5 text-primary" aria-hidden="true" />
+        </span>
         AuraWorkout
       </div>
-      <main className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-bold text-slate-900">{title}</h1>
-        <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
-        <div className="mt-5">{children}</div>
+      <main className="w-full max-w-sm">
+        <Card>
+          <CardHeader>
+            <CardTitle><h1 className="text-xl font-bold">{title}</h1></CardTitle>
+            <CardDescription>{subtitle}</CardDescription>
+          </CardHeader>
+          <CardContent>{children}</CardContent>
+        </Card>
       </main>
-      <p className="mt-4 text-sm text-slate-600">{footer}</p>
+      <p className="mt-4 text-sm text-muted-foreground">{footer}</p>
     </div>
   );
 }

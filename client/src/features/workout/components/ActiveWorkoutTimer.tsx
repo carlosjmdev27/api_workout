@@ -28,8 +28,8 @@ export function ActiveWorkoutTimer({ startedAt, variant = 'default' }: ActiveWor
 
   const inverse = variant === 'inverse';
   return (
-    <span className={`inline-flex items-center gap-1.5 font-mono font-semibold tabular-nums ${inverse ? 'text-sm text-white' : 'text-lg text-slate-900'}`}>
-      <Timer className={inverse ? 'h-4 w-4' : 'h-5 w-5 text-indigo-600'} aria-hidden="true" />
+    <span className={`inline-flex items-center gap-1.5 font-mono font-semibold tabular-nums ${inverse ? 'text-sm text-primary-foreground' : 'text-lg text-foreground'}`}>
+      <Timer className={inverse ? 'h-4 w-4' : 'h-5 w-5 text-primary'} aria-hidden="true" />
       <span aria-label="Tiempo de entrenamiento">{formatClock(now - Date.parse(startedAt))}</span>
     </span>
   );

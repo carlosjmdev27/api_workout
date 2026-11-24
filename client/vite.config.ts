@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -14,6 +15,8 @@ function readDevPort(mode: string): number {
 
 export default defineConfig(({ command, mode }) => ({
   plugins: [react(), tailwindcss()],
+  // "@/..." -> src/ (shadcn/ui convention, mirrors tsconfig "paths").
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   // The dev port only matters for `vite` (serve), not for `vite build`.
   server:
     command === 'serve'

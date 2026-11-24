@@ -22,7 +22,7 @@ function Summary({ session, history }: { session: WorkoutSessionDetail; history:
   return (
     <div className="space-y-6">
       <PageHeader title={`Resumen · ${session.dayName}`} description={`${session.routineName} · ${formatDateTime(session.completedAt)}`}>
-        <p className="pt-1 text-sm text-slate-500">
+        <p className="pt-1 text-sm text-muted-foreground">
           {previous ? `Comparado con tu sesión del ${formatDateTime(previous.completedAt)}.` : 'Primera sesión registrada de esta tabla.'}
           {records > 0 && ` ${records === 1 ? 'Has batido 1 récord' : `Has batido ${records} récords`} de peso (o de reps con el mismo peso).`}
         </p>
@@ -31,14 +31,14 @@ function Summary({ session, history }: { session: WorkoutSessionDetail; history:
       <SummaryTiles durationSeconds={session.durationSeconds} totals={compareTotals(session, previous)} />
 
       <section aria-labelledby="compare-title" className="space-y-3">
-        <h2 id="compare-title" className="text-lg font-semibold text-slate-900">Comparativa por ejercicio</h2>
+        <h2 id="compare-title" className="text-lg font-semibold text-foreground">Comparativa por ejercicio</h2>
         <ExerciseComparisonTable rows={exercises} />
       </section>
 
-      <section aria-labelledby="sets-title" className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 id="sets-title" className="text-lg font-semibold text-slate-900">Series realizadas</h2>
+      <section aria-labelledby="sets-title" className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <h2 id="sets-title" className="text-lg font-semibold text-foreground">Series realizadas</h2>
         <SessionSetsList sets={session.sets} />
-        {session.notes && <p className="whitespace-pre-line rounded-lg bg-slate-50 p-2 text-sm text-slate-600">{session.notes}</p>}
+        {session.notes && <p className="whitespace-pre-line rounded-lg bg-muted/50 p-2 text-sm text-muted-foreground">{session.notes}</p>}
       </section>
 
       <div className="flex flex-col gap-2 sm:flex-row">

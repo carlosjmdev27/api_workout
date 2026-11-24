@@ -36,8 +36,8 @@ function NumberCell({ label, value, error, placeholder, decimal, onChange }: Num
       aria-invalid={error ? true : undefined}
       title={error}
       onChange={(event) => onChange(event.target.value)}
-      className={`h-8 w-full min-w-0 rounded-md border bg-white px-1 text-center text-sm focus:outline-2 ${
-        error ? 'border-red-400 focus:outline-red-500' : 'border-slate-300 focus:outline-indigo-600'
+      className={`h-8 w-full min-w-0 rounded-md border bg-card px-1 text-center text-sm focus:outline-2 ${
+        error ? 'border-destructive focus:outline-destructive' : 'border-input focus:outline-ring'
       }`}
     />
   );
@@ -85,7 +85,7 @@ export function SetRowEditor({
   return (
     <li className="py-0.5">
       <div className={SET_EDITOR_GRID}>
-        <span className="text-center text-sm font-semibold text-slate-500">{number}</span>
+        <span className="text-center text-sm font-semibold text-muted-foreground">{number}</span>
         <SetTypeSelect value={row.setType} label={`Tipo de la serie ${number}`} compact onChange={onTypeChange} />
         {cell('targetWeight', { decimal: true, placeholder: '—', label: `Peso de la serie ${number} (kg)` })}
         {cell('targetRepMin')}
@@ -97,7 +97,7 @@ export function SetRowEditor({
         </div>
       </div>
       {rowErrors.length > 0 && (
-        <p className="mt-0.5 pl-6 text-[11px] leading-tight text-red-600">Serie {number} · {rowErrors.join(' · ')}</p>
+        <p className="mt-0.5 pl-6 text-[11px] leading-tight text-destructive">Serie {number} · {rowErrors.join(' · ')}</p>
       )}
     </li>
   );

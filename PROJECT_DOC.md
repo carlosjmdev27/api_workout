@@ -36,6 +36,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Fase 11 de la spec (rebranding a AuraWorkout y rediseño del listado de rutinas):** ✅ Completada (2026-11-24).
 
+**Fase 12 de la spec (shadcn/ui + lucide-react + Recharts, tema oscuro atlético):** ✅ Completada (2026-11-24).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -50,7 +52,7 @@ Revisar esta lista al empezar cada tarea.
 | 5 | **Privacidad de los `.md` de la raíz** (detalle abajo). Decisión aplazada por el usuario el 2026-11-19. | Media: decidir antes de añadir información sensible a la documentación | Fase 4 v2 |
 | 6 | **Gestionar los ejercicios propios del catálogo** (renombrar, cambiar el grupo muscular, borrar). Hoy un ejercicio mal clasificado queda así para siempre. | Media | v4 |
 | 7 | **Progresión por ejercicio entre tablas** usando `catalog_exercise_id` (p. ej. "Press de banca" en Torso A y Torso B como un mismo ejercicio). El vínculo ya existe; falta la vista. | Baja (mejora) | v4 |
-| 8 | **Dividir el bundle del cliente** (`import()` por página). Desde la v5 Vite avisa de que el JS supera los 500 kB minificados (505 kB, 153 kB gzip). No afecta en local. | Baja | v5 |
+| 8 | **Dividir el bundle del cliente** (`import()` por página). 🟡 **Parcial** (2026-11-24): el historial (con Recharts, 125 kB gzip) ya se carga bajo demanda. El chunk principal sigue en 545 kB (168 kB gzip) y Vite sigue avisando. Siguiente paso: cargar también bajo demanda el entrenamiento y el resumen. | Baja | v5 |
 | 4 | Avisos de `picomatch` (GHSA-fc5q-39xc-vjpf) en dependencias de desarrollo. El 2026-11-19 `npm audit` ya no los marca: **0 vulnerabilidades**, aunque seguimos en `picomatch@4.0.7`. No hubo cambio por nuestra parte; lo más probable es que se revisara el aviso. Vigilar en cada auditoría. | Baja | Fase 1 |
 
 **Detalle del pendiente #5: privacidad de `PROJECT_SPEC.md`, `PROJECT_DOC.md` e `INSTRUCCIONESDEEJECUCION.md`**
@@ -1424,3 +1426,80 @@ Hecho con la CLI de Railway (v5.75.0), con la sesión del usuario.
 **Incidencias (no eran fallos de la app):**
 - Un script de reemplazo en PowerShell trató mal los pares de textos y estropeó `AuthCard.tsx` (cambió letras sueltas). Se detectó en el `git diff` antes de compilar y se restauró con `git checkout`; los cambios se rehicieron con el editor.
 - En el test, `innerText` incluye el `h1` `sr-only` y la comprobación del enlace "atrás" se hacía antes de que se pintara el formulario.
+
+---
+
+## 2026-11-24 · Fase 12: shadcn/ui, Recharts y tema oscuro atlético
+
+### Instalación
+
+- **shadcn/ui** (`shadcn@4.23.0 init -t vite -b radix -p nova`):
+  - `components.json`, alias `@/` → `src/` (en `tsconfig.json`, `tsconfig.app.json` y `vite.config.ts`) y `src/lib/utils.ts`.
+  - Componentes en `src/components/ui/`: `button`, `card`, `input`, `textarea`, `badge` y `native-select`.
+  - Dependencias: `radix-ui`, `class-variance-authority`, `cn` (paquete oficial de shadcn que sustituye a `clsx` + `tailwind-merge`; se comprobó su origen: `github.com/shadcn-ui/cn`), `tw-animate-css` y `@fontsource-variable/geist` (fuente **auto-alojada**, compatible con la CSP).
+- **Recharts 3** para la gráfica de progresión. **lucide-react** ya se usaba en toda la app.
+- **El paquete `shadcn` no queda como dependencia:** solo se usaba para importar `shadcn/tailwind.css`, y su árbol de dependencias traía 4 vulnerabilidades moderadas (`ts-morph` → `minimatch`). Ese CSS se copió a `src/styles/shadcn-tailwind.css` (con la nota de licencia MIT) y se desinstaló el paquete. Resultado: **`npm audit`: 0 vulnerabilidades**. Para añadir componentes: `npx shadcn@4.23.0 add <nombre>`.
+
+### Tema (un único tema oscuro, `<html class="dark">`, `color-scheme: dark`)
+
+| Token | Valor | Uso |
+|-------|-------|-----|
+| `--background` | `#09090B` | Fondo de página |
+| `--card` / `--popover` | `#121215` | Tarjetas, modales, tooltips |
+| `--border` / `--input` | `#27272A` / `#3F3F46` | Bordes finos / bordes de campos |
+| `--primary` | `#A3E635` (lima) con texto `#0B0F02` | Botones principales ("Empezar entrenamiento", "Guardar"…), series completadas, foco |
+| `--muted-foreground` | `#A1A1AA` | Texto secundario (≈ 7:1 sobre las tarjetas) |
+| `--chart-1` / `--chart-2` | lima / `#3B82F6` | Peso máximo / volumen |
+
+- **Migración de colores:** un script reemplazó **273 clases** de colores fijos (`bg-white`, `text-slate-*`, `indigo-*`, `emerald-*`, `red-*`…) por **tokens semánticos** (`bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary`, `text-destructive`…) en 39 archivos, con una tabla explícita y un aviso de cualquier clase no prevista. Así el tema se ajusta desde `index.css`.
+- **Tipos de serie:** tinte translúcido y texto claro (sky, zinc, rose, amber, violet y teal). Drop set pasa de esmeralda a turquesa para no confundirse con el acento lima de las series completadas.
+- `tabular-nums` se mantiene en pesos, reps, cronómetro y tablas.
+
+### Componentes
+
+| Nuestro componente | Ahora |
+|--------------------|-------|
+| `Button` / `LinkButton` | `buttonVariants` de shadcn. Misma API; `sm` = 32 px, `md` = 36 px y el nuevo **`xl` = 48 px** para "Terminar entrenamiento" (con la altura fija de shadcn, el `py-3` de antes ya no la agrandaba) |
+| `TextField` / `TextAreaField` | `Input` / `Textarea` de shadcn (`aria-invalid` activa el estilo de error) |
+| `SetTypeBadge` / `MuscleBadge` | `Badge` de shadcn (la abreviatura sigue en un `<abbr>`, con `asChild`) |
+| Login / registro, progresión | `Card` de shadcn |
+| Selector de ejercicio del historial | `NativeSelect` de shadcn |
+| `Modal` | **Se mantiene el `<dialog>` nativo** con el aspecto del Dialog de shadcn. El de Radix cerraría el modal al pulsar Esc en el buscador de ejercicios, que hoy solo cierra su lista (comprobado en el test) |
+| Selector de tipo de serie (columna de 4,5 rem) | `<select>` nativo teñido: no hay sitio para el chevron de `NativeSelect` |
+
+- **Fase 7 (compactación) intacta:** inputs de 32 px, filas de series de 30 px en la tabla y ≤ 44 px en el entrenamiento, cabecera única y "+ Añadir serie" en el pie.
+- **Fase 11 intacta:** estado vacío sin título visible y con una sola acción, "My Workouts" y `AddWorkoutCard` al final con la misma altura.
+
+### Gráfica (Recharts)
+
+- `ProgressChart` reescrito con Recharts y con la misma interfaz:
+  - línea de 2 px con puntos de 4 px (6 px el activo) y rejilla discreta;
+  - **cruz de seguimiento y tooltip** (fecha, valor y "mejor serie…"), con la capa de accesibilidad de Recharts (teclado);
+  - colores de los tokens del tema.
+- **Peso máximo y volumen total:** son dos medidas con escalas muy distintas. En lugar de un gráfico con dos ejes (difícil de leer), hay un **selector** "Peso máximo | Volumen" con una sola serie cada vez. La tabla de sesiones sigue debajo, como vista accesible. Sin 1RM.
+- Se borran `chart-math.ts` y `useElementWidth.ts` (ya no se usan).
+- **El historial se carga bajo demanda** (`React.lazy`): Recharts está en su propio chunk (432 kB / 125 kB gzip) y solo se descarga al abrir un historial.
+
+### Lint
+
+- Excepción de `react-refresh/only-export-components` **solo** en `src/components/ui/**`: shadcn exporta por diseño sus variantes `cva` junto al componente. Las reglas de la spec (sin `any`, como máximo 150 líneas) siguen aplicándose también ahí.
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run build` del cliente (y `npm run check` completo) | ✅ Compila sin errores de TypeScript ni de lint |
+| `npm audit` | ✅ 0 vulnerabilidades |
+| Interfaz con Edge vía CDP (API y base de datos temporales) | ✅ 12/13 + 1 falso negativo del test |
+| `docker build -t gym-app-prod .` y ejecución | ✅ La página de login carga con la fuente Geist y el tema, **sin errores en consola ni violaciones de la CSP** de helmet |
+
+**Qué cubren los flujos de interfaz:**
+- Colores exactos del tema (fondo `#09090B`, tarjeta `#121215`, botón lima con texto oscuro).
+- Fase 11 (estado vacío y grid con la misma altura).
+- Fase 7 (filas de 30 px y abreviaturas; inputs de 32 px en el modal; filas ≤ 44 px, `tabular-nums` y "Anterior" en el entrenamiento).
+- Esc en el buscador de ejercicios dentro del modal.
+- Recharts: 4 puntos, línea lima, tooltip al pasar el ratón y cambio a volumen (línea azul).
+- Resumen y sin errores en consola.
+- **El falso negativo:** el test leyó el color de la serie marcada en mitad de la transición: `rgb(163, 229, 53)` frente al esperado `rgb(163, 230, 53)`.
+
+**Capturas revisadas:** login (móvil), estado vacío, grid, detalle de la rutina (escritorio y móvil), editor (móvil), entrenamiento (móvil), historial con la gráfica y el tooltip, volumen (móvil) y resumen.

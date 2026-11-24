@@ -19,7 +19,7 @@ export function FormActions({ cancelTo, submitLabel, pending, error }: FormActio
       {error !== null && (
         <Alert message={getErrorMessage(error)} details={getErrorDetails(error)} />
       )}
-      <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">
+      <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
         <LinkButton to={cancelTo} variant="secondary">
           Cancelar
         </LinkButton>

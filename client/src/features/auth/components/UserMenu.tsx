@@ -11,7 +11,7 @@ export function UserMenu(): JSX.Element {
 
   return (
     <div className="flex items-center gap-1">
-      <span className="hidden items-center gap-1.5 text-sm text-slate-600 sm:flex" title={user.email}>
+      <span className="hidden items-center gap-1.5 text-sm text-muted-foreground sm:flex" title={user.email}>
         <UserRound className="h-4 w-4" aria-hidden="true" />
         {user.name}
       </span>
@@ -22,7 +22,7 @@ export function UserMenu(): JSX.Element {
           navigate('/login', { replace: true });
         }}
         aria-label={`Salir: cerrar la sesión de ${user.name}`}
-        className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-indigo-600"
+        className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
       >
         <LogOut className="h-4 w-4" aria-hidden="true" />
         <span>Salir</span>

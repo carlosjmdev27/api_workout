@@ -13,11 +13,11 @@ interface LayoutProps {
 /** App shell: top bar + centered content area. */
 export function Layout({ banner, actions }: LayoutProps): JSX.Element {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link to="/" className="flex items-center gap-2 font-semibold text-slate-900">
-            <Dumbbell className="h-6 w-6 text-indigo-600" aria-hidden="true" />
+          <Link to="/" className="flex items-center gap-2 font-semibold text-foreground">
+            <Dumbbell className="h-6 w-6 text-primary" aria-hidden="true" />
             AuraWorkout
           </Link>
           {actions}

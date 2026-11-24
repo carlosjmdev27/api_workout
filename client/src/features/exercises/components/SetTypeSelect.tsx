@@ -20,12 +20,13 @@ export function SetTypeSelect({ value, label, compact = false, onChange }: SetTy
       onChange={(event) => {
         if (isSetType(event.target.value)) onChange(event.target.value);
       }}
-      className={`w-full cursor-pointer rounded-md border-0 font-medium ring-1 ring-inset focus:outline-2 focus:outline-indigo-600 ${
+      // Tinted native select: in a 4.5rem column there is no room for the shadcn NativeSelect chevron.
+      className={`w-full cursor-pointer rounded-md border-0 font-medium ring-1 ring-inset outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         compact ? 'h-8 px-1 text-xs tracking-wide' : 'h-9 px-2 text-sm'
       } ${SET_TYPE_STYLES[value]}`}
     >
       {SET_TYPES.map((type) => (
-        <option key={type} value={type} className="bg-white text-slate-900">
+        <option key={type} value={type} className="bg-popover text-popover-foreground">
           {compact ? SET_TYPE_SHORT[type] : SET_TYPE_LABELS[type]}
         </option>
       ))}

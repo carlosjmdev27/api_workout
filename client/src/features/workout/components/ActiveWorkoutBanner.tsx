@@ -13,7 +13,7 @@ export function ActiveWorkoutBanner(): JSX.Element | null {
   return (
     <Link
       to={activeWorkoutPath(active.dayId)}
-      className="flex items-center justify-between gap-3 bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white sm:px-6"
+      className="flex items-center justify-between gap-3 bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-primary-foreground sm:px-6"
     >
       <span className="flex min-w-0 items-center gap-2">
         <Dumbbell className="h-4 w-4 shrink-0" aria-hidden="true" />

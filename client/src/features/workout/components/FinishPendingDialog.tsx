@@ -16,7 +16,7 @@ export function FinishPendingDialog({ open, pendingCount, onSaveAll, onSaveCompl
   return (
     <Modal open={open} title="Series sin marcar" onClose={onCancel}>
       <div className="space-y-4">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Tienes {pluralize(pendingCount, 'serie', 'series')} con repeticiones escritas pero sin marcar como hecha.
           ¿Qué quieres hacer con ellas?
         </p>

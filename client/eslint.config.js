@@ -28,4 +28,9 @@ export default tseslint.config(
       'max-lines-per-function': ['error', { max: 150, skipBlankLines: true, skipComments: true }],
     },
   },
+  {
+    // shadcn/ui generated components export their cva variants next to the component by design.
+    files: ['src/components/ui/**/*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 )

@@ -43,7 +43,7 @@ export function RegisterPage(): JSX.Element {
     <AuthCard
       title="Crear cuenta"
       subtitle="Tus rutinas e historial serán privados: solo tú podrás verlos."
-      footer={<>¿Ya tienes cuenta? <Link to="/login" className="font-medium text-indigo-600 hover:underline">Inicia sesión</Link></>}
+      footer={<>¿Ya tienes cuenta? <Link to="/login" className="font-medium text-primary hover:underline">Inicia sesión</Link></>}
     >
       <form noValidate onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
         {apiError !== null && <Alert message={getErrorMessage(apiError)} />}

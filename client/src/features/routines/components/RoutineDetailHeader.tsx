@@ -45,7 +45,7 @@ export function RoutineDetailHeader({ routine }: { routine: RoutineDetail }): JS
           </>
         }
       >
-        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm text-slate-500">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <ListChecks className="h-4 w-4" aria-hidden="true" />
             {pluralize(routine.days.length, 'tabla', 'tablas')}
