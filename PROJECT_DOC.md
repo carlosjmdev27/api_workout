@@ -1880,3 +1880,24 @@ La redirección tras confirmar usa `CORS_ORIGIN` si existe: Vite en desarrollo, 
   - la interfaz muestra "¡Cuenta creada!" y el login con el nombre de usuario funciona;
   - sin errores de ejecución.
 - Con `true`: la prueba completa de la API de la Fase 17 vuelve a pasar entera ✅.
+
+---
+
+## 2026-11-24 · Botón del ojo en los campos de contraseña (login y registro)
+
+- **Nuevo `PasswordField`** en `components/FormField.tsx`. Usa la misma estructura que `TextField` (etiqueta, error, ayuda, `aria-describedby`).
+- **El botón del ojo:**
+  - va dentro del campo, a la derecha; el input lleva `pr-10` para que el texto no quede debajo;
+  - muestra `Eye` cuando la contraseña está oculta y `EyeOff` cuando se ve;
+  - empieza **oculta**, y alterna entre `type="password"` y `type="text"`.
+- **Accesibilidad:**
+  - es un botón de alternar con nombre fijo, "Mostrar contraseña", y su estado en `aria-pressed`, como el resto de botones de alternar de la app;
+  - lleva `aria-controls` hacia el input;
+  - es `type="button"`, así que nunca envía el formulario;
+  - mide 40×36 px, cómodo de pulsar en el móvil.
+- Desactiva el autocorrector y las mayúsculas automáticas: al mostrar la contraseña, el móvil no debe "corregirla".
+- **Dónde:** el campo "Contraseña" de `/login` y de `/register`. Los de `/profile` (cambio de contraseña) siguen como estaban.
+- **Verificación:**
+  - `npm run check` ✅;
+  - Edge headless en un móvil de 390×844 (9 comprobaciones ✅): en las dos pantallas empieza oculta; un clic la muestra y conserva el valor; otro clic la oculta sin enviar el formulario; el botón queda dentro del campo; sin errores de ejecución;
+  - capturas en oscuro (login) y claro (registro).

@@ -4,7 +4,7 @@ import { LIMITS, loginInputSchema } from '@gym/shared';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
-import { TextField } from '../../../components/FormField';
+import { PasswordField, TextField } from '../../../components/FormField';
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle';
 import { ApiRequestError } from '../../../services/http-client';
 import { getErrorMessage } from '../../../utils/errors';
@@ -78,7 +78,7 @@ export function LoginPage(): JSX.Element {
           error={errors.identifier}
           onChange={(e) => setIdentifier(e.target.value)}
         />
-        <TextField label="Contraseña" type="password" autoComplete="current-password" required value={password} error={errors.password} onChange={(e) => setPassword(e.target.value)} />
+        <PasswordField label="Contraseña" autoComplete="current-password" required value={password} error={errors.password} onChange={(e) => setPassword(e.target.value)} />
         <Button type="submit" icon={LogIn} loading={pending} className="w-full">Entrar</Button>
       </form>
     </AuthCard>

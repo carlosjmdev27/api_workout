@@ -1,4 +1,5 @@
-import { useId, type InputHTMLAttributes, type JSX, type ReactNode, type TextareaHTMLAttributes } from 'react';
+import { useId, useState, type InputHTMLAttributes, type JSX, type ReactNode, type TextareaHTMLAttributes } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -72,7 +73,48 @@ export function TextField({ label, error, hint, required, className, suffix, ...
   );
 }
 
-type TextAreaFieldProps = FieldMeta & TextareaHTMLAttributes<HTMLTextAreaElement>;
+type PasswordFieldProps = FieldMeta & Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>;
+
+/**
+ * Password input with an eye button to show / hide what was typed (Eye / EyeOff).
+ * Toggle button: fixed accessible name, state in aria-pressed. Hidden by default.
+ */
+export function PasswordField({ label, error, hint, required, className, ...inputProps }: PasswordFieldProps): JSX.Element {
+  const id = useId();
+  const [visible, setVisible] = useState(false);
+  const Icon = visible ? EyeOff : Eye;
+  return (
+    <FieldShell id={id} label={label} error={error} hint={hint} required={required}>
+      <div className="relative">
+        <Input
+          id={id}
+          type={visible ? 'text' : 'password'}
+          required={required}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy(id, { label, error, hint })}
+          className={`h-9 pr-10 ${className ?? ''}`}
+          {...inputProps}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((current) => !current)}
+          aria-label={`Mostrar ${label.toLowerCase()}`}
+          aria-pressed={visible}
+          aria-controls={id}
+          title={visible ? 'Ocultar' : 'Mostrar'}
+          className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        >
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    </FieldShell>
+  );
+}
+
+type TextAreaFieldProps =FieldMeta & TextareaHTMLAttributes<HTMLTextAreaElement>;
 
 export function TextAreaField({ label, error, hint, required, className, ...areaProps }: TextAreaFieldProps): JSX.Element {
   const id = useId();

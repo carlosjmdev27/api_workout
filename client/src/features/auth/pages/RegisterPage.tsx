@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { Alert } from '../../../components/Alert';
 import { Button } from '../../../components/Button';
 import { LinkButton } from '../../../components/LinkButton';
-import { TextField } from '../../../components/FormField';
+import { PasswordField, TextField } from '../../../components/FormField';
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle';
 import { getErrorMessage } from '../../../utils/errors';
 import { validateWith, type FieldErrors } from '../../../utils/validation';
@@ -100,7 +100,7 @@ export function RegisterPage(): JSX.Element {
           {...field('username')}
         />
         <TextField label="Correo electrónico" type="email" autoComplete="email" inputMode="email" required maxLength={LIMITS.EMAIL_MAX} hint="Te enviaremos un enlace para confirmarlo." {...field('email')} />
-        <TextField label="Contraseña" type="password" autoComplete="new-password" required hint={`Mínimo ${LIMITS.PASSWORD_MIN} caracteres.`} {...field('password')} />
+        <PasswordField label="Contraseña" autoComplete="new-password" required hint={`Mínimo ${LIMITS.PASSWORD_MIN} caracteres.`} {...field('password')} />
         <Button type="submit" icon={UserPlus} loading={pending} className="w-full">Crear cuenta</Button>
       </form>
     </AuthCard>
