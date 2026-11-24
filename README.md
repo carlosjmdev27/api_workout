@@ -60,7 +60,7 @@ Si junto a `gym.sqlite` existe `gym.sqlite-wal`, cópialo también (con el mismo
 
 ## Despliegue en Railway (un solo servicio)
 
-El `Dockerfile` de la raíz genera **una sola imagen**: Express sirve la API (`/api`) y la web compilada, desde el mismo dominio y sin CORS. Railway lo detecta solo; `railway.toml` añade el healthcheck (`/api/health`).
+El `Dockerfile` de la raíz genera **una sola imagen**: Express sirve la API (`/api`) y la web compilada, desde el mismo dominio y sin CORS. Railway lo detecta solo. El healthcheck (`/api/health`) se configura en el servicio: *Settings → Deploy → Healthcheck Path*. Railway retiró `railway.toml` el 2026-12-01, así que no hay archivo de configuración en el repo.
 
 ```bash
 docker build -t gym-app-prod .   # comprobar en local que la imagen se construye
