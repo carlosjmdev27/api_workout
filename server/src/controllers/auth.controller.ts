@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { LoginInput, PasswordChange, ProfileUpdate, RegisterInput, ResendVerificationInput } from '@gym/shared';
+import type { IdentityUpdate, LoginInput, PasswordChange, RegisterInput, ResendVerificationInput } from '@gym/shared';
 import { userIdOf } from '../middlewares/auth.middleware.js';
 import type { AuthService } from '../services/auth.service.js';
 import type { EmailVerificationService } from '../services/verification.service.js';
@@ -48,8 +48,8 @@ export class AuthController {
     sendSuccess(res, 200, await this.service.me(userIdOf(req)));
   };
 
-  updateProfile = async (req: BodyRequest<ProfileUpdate>, res: Response): Promise<void> => {
-    sendSuccess(res, 200, await this.service.updateProfile(userIdOf(req), req.body));
+  updateIdentity = async (req: BodyRequest<IdentityUpdate>, res: Response): Promise<void> => {
+    sendSuccess(res, 200, await this.service.updateIdentity(userIdOf(req), req.body));
   };
 
   changePassword = async (req: BodyRequest<PasswordChange>, res: Response): Promise<void> => {

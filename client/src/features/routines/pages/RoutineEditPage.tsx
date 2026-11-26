@@ -16,7 +16,7 @@ function EditContent({ routine }: { routine: RoutineDetail }): JSX.Element {
 
   return (
     <>
-      <PageHeader title="Editar rutina" backTo={detailPath} backLabel={routine.name} />
+      <PageHeader title="Editar rutina" />
       <RoutineForm
         initialValues={routineToFormValues(routine)}
         submitLabel="Guardar cambios"

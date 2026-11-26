@@ -1,5 +1,6 @@
 import type { Database } from 'better-sqlite3';
 import { addEmailVerification } from './migration-v7.js';
+import { addProfileAndWeightLogs } from './migration-v8.js';
 import { columnNames } from './schema-info.js';
 
 // Frozen copy of SET_TYPES as of v2: an applied migration must never change.
@@ -194,6 +195,7 @@ const MIGRATIONS: readonly Migration[] = [
   },
   { run: addUserPreferences },
   { run: addEmailVerification },
+  { run: addProfileAndWeightLogs },
 ];
 
 function getSchemaVersion(db: Database): number {

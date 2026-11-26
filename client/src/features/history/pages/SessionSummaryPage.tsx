@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { ArrowLeft, History } from 'lucide-react';
+import { History } from 'lucide-react';
 import type { WorkoutSession, WorkoutSessionDetail } from '@gym/shared';
 import { useParams } from 'react-router-dom';
 import { LinkButton } from '../../../components/LinkButton';
@@ -43,7 +43,6 @@ function Summary({ session, history }: { session: WorkoutSessionDetail; history:
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <LinkButton to={`/days/${session.workoutDayId}/history`} icon={History}>Ver historial de la tabla</LinkButton>
-        <LinkButton to={`/routines/${session.routineId}?day=${session.workoutDayId}`} variant="secondary" icon={ArrowLeft}>Volver a la rutina</LinkButton>
       </div>
     </div>
   );

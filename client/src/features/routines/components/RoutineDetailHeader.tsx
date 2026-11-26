@@ -32,8 +32,6 @@ export function RoutineDetailHeader({ routine }: { routine: RoutineDetail }): JS
       <PageHeader
         title={routine.name}
         description={routine.description}
-        backTo="/"
-        backLabel="My Workouts"
         actions={
           <>
             <LinkButton to={`/routines/${routine.id}/edit`} variant="secondary" size="sm" icon={Pencil}>

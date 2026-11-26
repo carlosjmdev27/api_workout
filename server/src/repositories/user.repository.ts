@@ -1,4 +1,4 @@
-import type { ProfileUpdate, User } from '@gym/shared';
+import type { IdentityUpdate, PersonalProfileUpdate, PhysicalProfileUpdate, User } from '@gym/shared';
 
 /** A user plus private columns, which never leave the auth services. */
 export interface UserWithHash extends User {
@@ -29,13 +29,15 @@ export type CreateUserResult =
   | { status: 'created'; user: User; /** First account: took over the data created before login existed. */ claimedLegacyData: boolean }
   | { status: 'conflict'; field: UniqueField };
 
-export type UpdateProfileResult =
+export type UpdateIdentityResult =
   | { status: 'updated'; user: User }
   | { status: 'conflict'; field: UniqueField }
   | { status: 'missing' };
 
-/** Editable account data (already validated and normalized). */
-export type ProfileData = ProfileUpdate;
+/** Editable account data (already validated and normalized by the shared schemas). */
+export type PersonalData = PersonalProfileUpdate;
+export type PhysicalData = PhysicalProfileUpdate;
+export type IdentityData = IdentityUpdate;
 
 /** Persistence contract for accounts. */
 export interface UserRepository {
@@ -48,8 +50,12 @@ export interface UserRepository {
    * UNIQUE violations (email / username) are reported, never thrown.
    */
   create(record: NewUserRecord): Promise<CreateUserResult>;
-  /** Name, username, email, body weight and unit, with UNIQUE checked atomically. */
-  updateProfile(id: string, data: ProfileData): Promise<UpdateProfileResult>;
+  /** Name, last name, country, birth date. null = the user does not exist. */
+  updatePersonal(id: string, data: PersonalData): Promise<User | null>;
+  /** Height and preferred weight unit. null = the user does not exist. */
+  updatePhysical(id: string, data: PhysicalData): Promise<User | null>;
+  /** Username + email, with UNIQUE checked atomically. */
+  updateIdentity(id: string, data: IdentityData): Promise<UpdateIdentityResult>;
   findPasswordHash(id: string): Promise<string | null>;
   updatePasswordHash(id: string, passwordHash: string): Promise<boolean>;
   /** Replaces the pending confirmation of an unverified account (resend). */

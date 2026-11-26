@@ -2,7 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import {
   loginInputSchema,
   passwordChangeSchema,
-  profileUpdateSchema,
+  identityUpdateSchema,
   registerInputSchema,
   resendVerificationSchema,
 } from '@gym/shared';
@@ -21,7 +21,7 @@ export function createAuthRouter(controller: AuthController, requireAuth: Reques
   // Every call counts: it sends emails, so nobody can flood an inbox from one IP.
   router.post('/auth/resend-verification', authRateLimit(true), validateBody(resendVerificationSchema), controller.resendVerification);
   router.get('/auth/me', requireAuth, controller.me);
-  router.put('/auth/profile', requireAuth, validateBody(profileUpdateSchema), controller.updateProfile);
+  router.put('/auth/identity', requireAuth, validateBody(identityUpdateSchema), controller.updateIdentity);
   // Wrong current passwords count like failed logins: a stolen session cannot brute-force it.
   router.put('/auth/password', requireAuth, authRateLimit(false), validateBody(passwordChangeSchema), controller.changePassword);
 

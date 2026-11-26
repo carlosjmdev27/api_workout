@@ -1,6 +1,15 @@
 import type { Equipment, MuscleGroup } from '../catalog.js';
 import type { SetType } from '../set-types.js';
+import type { CountryCode } from '../countries.js';
 import type { WeightUnit } from '../weight-units.js';
+
+/** One weigh-in of the body weight history, in the unit it was recorded with. */
+export interface WeightLog {
+  id: string;
+  weight: number;
+  unit: WeightUnit;
+  recordedAt: string; // ISO 8601
+}
 
 /** Entry of the exercise catalog (base list or created by the user). */
 export interface CatalogExercise {
@@ -18,6 +27,12 @@ export interface User {
   /** Unique login name (lowercase); the login accepts it or the email. */
   username: string;
   name: string;
+  lastName: string | null;
+  /** ISO 3166-1 alpha-2 (e.g. "ES"). */
+  country: CountryCode | null;
+  /** YYYY-MM-DD. */
+  birthDate: string | null;
+  heightCm: number | null;
   createdAt: string;
   /** Current body weight in `weightUnit`, or null if not set. */
   bodyWeight: number | null;

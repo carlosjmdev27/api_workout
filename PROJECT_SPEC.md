@@ -630,3 +630,81 @@ Actualizar la tabla `users` al arrancar el servidor mediante migración segura (
 - `APP_URL` = `https://apiworkout-production.up.railway.app`
 - `RESEND_API_KEY` = *(secreta: configurada solo en las variables de Railway, nunca en el repositorio)*
 - `EMAIL_FROM` = `AuraWorkout <onboarding@resend.dev>`
+
+---
+
+## 🧩 Fase 18: Rediseño de Navegación, Menú de Usuario y Gestión Modular de Cuenta
+
+### 1. Objetivo
+Reorganizar la navegación superior y dividir la gestión de cuenta en tres secciones independientes accesibles únicamente desde un menú desplegable de usuario, eliminando elementos redundantes de la interfaz.
+
+---
+
+### 2. Cambios en la Cabecera (`Navbar`) y Navegación Global
+1. **Identidad en Cabecera**:
+   - El logotipo/título **`AuraWorkout`** en la barra superior debe ser clicable y navegar a `/` (vista principal de rutinas).
+   - Sustituir el nombre general mostrado junto al icono de usuario por el **`@username`** (o `username`) del usuario autenticado.
+2. **Menú Desplegable de Usuario (Dropdown)**:
+   - Eliminar el botón independiente de **"Salir / Cerrar sesión"** de la barra superior.
+   - Al pulsar sobre el bloque de **icono + nombre de usuario** en la cabecera, abrir un menú desplegable accesible (con teclado y cierre al hacer clic fuera) con las siguientes opciones en este **orden estricto**:
+     1. **Perfil** (`/profile`)
+     2. **Mi progreso** (`/progress`)
+     3. **Seguridad** (`/security`)
+     4. *(Separador visual)*
+     5. **Cerrar sesión** (ejecuta el cierre de sesión y redirige a `/login`)
+3. **Limpieza de Navegación y Portada**:
+   - **Eliminar los enlaces/botones de retroceso** (`"← My Workouts"`, `"← Volver a la rutina"`, etc.) de todas las vistas internas de la aplicación (delegando el retroceso en los controles nativos del navegador/móvil o en el clic sobre el logo `AuraWorkout`).
+   - **Eliminar el título `"My Workouts"`** de la vista principal (`/`), mostrando directamente el grid de rutinas (o el estado vacío si no hay rutinas).
+
+---
+
+### 3. Migración Segura de Base de Datos (Esquema v8)
+Aplicar migración idempotente verificando `PRAGMA table_info(users)` para conservar intactos todos los usuarios, rutinas y sesiones existentes:
+1. **Ampliar tabla `users`**:
+   - `last_name`: `TEXT` (nullable, apellidos).
+   - `country`: `TEXT` (nullable, código ISO 3166-1 alpha-2, ej. `'ES'`).
+   - `birth_date`: `TEXT` (nullable, formato ISO `YYYY-MM-DD`).
+   - `height_cm`: `REAL` (nullable, `CHECK(height_cm BETWEEN 50 AND 280)`).
+2. **Nueva tabla `body_weight_logs`** (historial de peso corporal):
+   - `id`: `TEXT PRIMARY KEY` (UUID).
+   - `user_id`: `TEXT NOT NULL` (FK -> `users.id` con `ON DELETE CASCADE`).
+   - `weight`: `REAL NOT NULL` (`CHECK(weight BETWEEN 20 AND 500)`).
+   - `unit`: `TEXT NOT NULL` (`CHECK(unit IN ('kg', 'lb'))`).
+   - `recorded_at`: `TEXT NOT NULL` (fecha/hora ISO 8601).
+   - Índice compuesto en `(user_id, recorded_at DESC)`.
+   - **Migración inicial de peso**: Si un usuario existente ya tenía un valor en `users.body_weight`, insertar automáticamente un primer registro inicial en `body_weight_logs` con su fecha de creación/actual para no perder ese dato.
+
+---
+
+### 4. Nuevas Vistas de Cuenta y Requisitos Funcionales
+
+#### A. Perfil — Datos Personales (`/profile`)
+- Formulario compacto para editar:
+  - **Nombre** (`name`, obligatorio).
+  - **Apellidos** (`lastName`, opcional).
+  - **País** (`country`, desplegable con todos los países del mundo en español; usar lista estándar ISO 3166-1 estática en `@gym/shared` para garantizar 0 latencia, funcionamiento offline y compatibilidad con la CSP).
+  - **Fecha de nacimiento** (`birthDate`, selector de fecha `<input type="date">` validado para fechas reales y no futuras).
+  - **Edad calculada en tiempo real**: Mostrar junto al campo de fecha de nacimiento una insignia/texto informativo con la edad exacta calculada dinámicamente (ej. `"28 años"`), actualizándose al instante cuando el usuario modifica la fecha.
+
+#### B. Mi Progreso — Datos Físicos y Evolución Corporal (`/progress`)
+- **Bloque 1 — Medidas y Registro de Peso**:
+  - Campo editable para **Altura (`cm`)** (`inputMode="numeric"`, entre 50 y 280 cm) y selector de **Unidad de peso preferida (`kg` / `lb`)** (manteniendo la propagación global en rutinas y gráficas).
+  - Formulario rápido para **Registrar peso corporal actual** (con fecha personalizable por defecto a hoy): al guardar, actualiza el peso actual del usuario e inserta un nuevo punto en `body_weight_logs`.
+- **Bloque 2 — Gráfica de Fluctuación de Peso (`Recharts`)**:
+  - Gráfica lineal responsiva (compatible con Modo Oscuro y Modo Claro) que muestre la evolución del peso corporal en el tiempo, con tooltip interactivo (fecha + peso con unidad).
+  - Debajo de la gráfica, mostrar una lista/tabla compacta cronológica de los registros realizados con opción para eliminar entradas erróneas (`DELETE /api/profile/weight-logs/:id`).
+
+#### C. Seguridad y Privacidad (`/security`)
+- Mover aquí desde el antiguo perfil toda la gestión de credenciales e identidad de acceso:
+  - **Tarjeta 1 — Identidad de Acceso**: Edición de **Nombre de usuario (`username`)** y **Correo electrónico (`email`)** (manteniendo la validación de dominio MX y unicidad 409).
+  - **Tarjeta 2 — Cambio de Contraseña**: Formulario con `PasswordField` (botón de mostrar/ocultar), contraseña actual, nueva contraseña y confirmación con validación en vivo.
+
+---
+
+### 5. Endpoints Backend a Actualizar / Crear (`authenticateToken`)
+- `PUT /api/auth/profile`: Actualizar `name`, `lastName`, `country`, `birthDate`, `heightCm` y `weightUnit` (o dividir en `PUT /api/profile/personal` y `PUT /api/profile/physical` manteniendo validación estricta con Zod).
+- `PUT /api/auth/account` (o `PUT /api/auth/identity`): Actualizar `username` y `email` (con validación MX).
+- `PUT /api/auth/password`: Sin cambios de lógica, asociado a la vista `/security`.
+- `GET /api/profile/weight-logs`: Devuelve el historial de peso corporal del usuario ordenado cronológicamente.
+- `POST /api/profile/weight-logs`: Registra un nuevo pesaje `{ weight, unit, recordedAt? }` y actualiza `users.body_weight`.
+- `DELETE /api/profile/weight-logs/:logId`: Elimina un registro de peso propio del usuario.

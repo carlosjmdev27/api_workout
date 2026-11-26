@@ -50,6 +50,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Fase 17 de la spec (verificación real del email y login con usuario o correo):** ✅ Completada (2026-11-24). Esquema de la base de datos en **v7**.
 
+**Fase 18 de la spec (navegación, menú de usuario y cuenta en tres secciones):** ✅ Completada (2026-11-26). Esquema de la base de datos en **v8**.
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -1907,3 +1909,72 @@ La redirección tras confirmar usa `CORS_ORIGIN` si existe: Vite en desarrollo, 
   - cada uno muestra solo su campo;
   - el cambio de contraseña sigue funcionando: con la actual errónea da error; con la correcta muestra el éxito, vacía los campos y la nueva contraseña sirve para entrar;
   - sin errores de ejecución.
+
+---
+
+## 2026-11-26 · Fase 18: navegación, menú de usuario y cuenta en tres secciones
+
+### Navegación
+- **Cabecera:**
+  - el logo **AuraWorkout** lleva a `/`;
+  - el bloque de usuario muestra **`@username`**, recortado si es largo;
+  - ya no hay botón "Salir" suelto.
+- **Menú desplegable:** es `DropdownMenu` de shadcn/ui (Radix). Lo añadió la CLI `shadcn@4.23.0`, solo con el archivo `ui/dropdown-menu.tsx`, sin dependencias nuevas: usa `radix-ui`, que ya estaba instalado.
+  - **Orden de las opciones:** Perfil · Mi progreso · Seguridad · separador · **Cerrar sesión** (en rojo).
+  - **Teclado:** se abre con Enter o con las flechas, se recorre con las flechas y se cierra con Esc, devolviendo el foco al botón.
+  - **Ratón:** se cierra al pulsar fuera.
+  - **Estado activo:** el botón queda resaltado mientras se está en una de las tres páginas, y la opción de la página actual lleva `aria-current`.
+- **Sin enlaces de vuelta:** se quitan `backTo` y `backLabel` de `PageHeader` (rutina, nueva o editar rutina, historial, perfil) y el botón "Volver a la rutina" del resumen del entrenamiento. Se mantienen los botones de las pantallas de **error** (`ErrorState`) y el "Volver al entrenamiento" del diálogo de terminar, porque no son navegación: son la salida de una situación concreta.
+- **Portada:** sin el título visible "My Workouts"; el grid aparece directamente. Se mantiene un `<h1>` `sr-only` para los lectores de pantalla.
+
+### Base de datos: migración v8 (`migration-v8.ts`)
+- **Tabla `users`:** comprueba `PRAGMA table_info(users)` y añade solo las columnas que faltan: `last_name`, `country` (`CHECK` de 2 letras en mayúsculas), `birth_date` y `height_cm` (`CHECK` 50-280). Las cuentas existentes quedan con `NULL` en todas.
+- **Nueva tabla `body_weight_logs`** (`CREATE TABLE IF NOT EXISTS`):
+  - columnas `id`, `user_id` (FK a `users` con `ON DELETE CASCADE`), `weight` (`CHECK` 20-500), `unit` (`CHECK` kg/lb) y `recorded_at`;
+  - índice `(user_id, recorded_at DESC)`.
+- **Peso anterior:** quien tenía `users.body_weight` recibe ese peso como primer registro, con su unidad y la fecha actual. Solo se hace si aún no tiene ningún registro, así que repetir la migración no lo duplica.
+
+### Backend
+
+| Endpoint (protegido) | Comportamiento |
+|----------------------|----------------|
+| `PUT /api/profile/personal` `{ name, lastName, country, birthDate }` | `personalProfileSchema`. `country` es un código ISO 3166-1 de la lista; `birthDate` es una fecha real `YYYY-MM-DD`, no futura (se compara con el "hoy" de la zona UTC+14, así que el "hoy" local nunca se rechaza) y no anterior a 1900. Si `lastName` llega vacío se guarda `null`. |
+| `PUT /api/profile/physical` `{ heightCm, weightUnit }` | Altura 50-280 o `null`. Al cambiar la unidad se **recalcula el peso actual** a partir del último registro, en la unidad nueva. Los pesos de rutinas y sesiones solo cambian de etiqueta, como en la Fase 16. |
+| `GET /api/profile/weight-logs` | Historial del usuario, del más antiguo al más reciente, con un máximo de 1000. |
+| `POST /api/profile/weight-logs` `{ weight, unit, recordedAt? }` | 201 `{ log, user }`. `recordedAt` es opcional (por defecto, ahora), con 5 minutos de margen para el reloj del móvil, y no puede ser futuro. |
+| `DELETE /api/profile/weight-logs/:logId` | 200 `{ log: null, user }`. Un registro de otro usuario o inexistente da **404 `WEIGHT_LOG_NOT_FOUND`** (el `DELETE` filtra por `user_id`). |
+| `PUT /api/auth/identity` `{ username, email }` | Sustituye al antiguo `PUT /api/auth/profile`, que se ha eliminado. Mantiene el MX solo si el email cambia, y el 409 para nombres de usuario o emails repetidos. |
+
+- **Peso actual (`users.body_weight`):** siempre es el **registro más reciente por fecha**, no el último que se ha guardado, y se muestra en la unidad del usuario. Se recalcula en la misma transacción al añadir o borrar registros. Si al convertirlo se sale del rango 20-500 (un caso extremo), se deja sin valor en vez de fallar.
+- **Conversión kg↔lb:** `convertWeight` en `@gym/shared`, **solo para mostrar**. Los registros guardan siempre el valor y la unidad con que se escribieron.
+- **Lista de países:** `@gym/shared/countries.ts`, una lista estática de los **249 países** ISO 3166-1 con su nombre en español, ordenados. Se generó una sola vez con `Intl.DisplayNames('es')`. No hace peticiones a ningún servicio, funciona sin conexión y es compatible con la CSP.
+- **Nuevos:** `ProfileService`, `ProfileController`, `profile.routes.ts`, `WeightLogRepository` y `SqliteWeightLogRepository`. En `UserRepository`, `updateProfile` se divide en `updatePersonal`, `updatePhysical` y `updateIdentity`.
+
+### Frontend (tres secciones)
+- **`/profile`, Perfil:**
+  - campos Nombre, Apellidos, **País** (nuevo `SelectField` con `<select>` nativo y "Sin especificar") y **Fecha de nacimiento** (`type="date"`, con mínimo 1900 y máximo hoy);
+  - una **insignia con la edad**, que se recalcula a cada cambio de la fecha (`ageFrom`, solo con aritmética de calendario);
+  - el botón "Cerrar sesión" del final desaparece: ahora está en el menú.
+- **`/progress`, Mi progreso**, que se carga bajo demanda como el historial porque usa Recharts:
+  - **Medidas:** altura y selector kg/lb;
+  - **Peso corporal:**
+    - muestra el peso actual;
+    - formulario con peso y fecha, que por defecto es hoy. Si es hoy, se guarda la hora actual; si es otro día, las 12:00 locales, para que se mantenga en el mismo día;
+    - gráfica `ProgressChart` (reutilizada del historial y adaptada al tema), con todos los puntos en la unidad actual; el tooltip indica "registrado como 80 kg" cuando se escribió en la otra unidad;
+    - tabla de registros del más reciente al más antiguo, con un botón de borrar que pide confirmación.
+- **`/security`, Seguridad:** la tarjeta **Identidad de acceso** (nombre de usuario y email; al guardar, el `@username` de la cabecera se actualiza al instante) y la tarjeta **Contraseña**, que se movió del perfil y mantiene los ojos.
+- **Organización:** carpetas `features/profile`, `features/progress` y `features/security`. `PasswordCard` y `WeightUnitSelector` se movieron con `git mv`. Nuevo `services/profile.api.ts` y nuevo `utils/dates.ts` (`ageFrom`, `todayInput`, `weighInTimestamp`).
+
+### Verificación
+
+| Prueba | Resultado |
+|--------|-----------|
+| `npm run check` | ✅ El aviso de tamaño del bundle es el pendiente #8; la página nueva con Recharts va en un chunk aparte. |
+| Migración sobre **copias** de la base de desarrollo y de la copia de seguridad de Docker (los originales no cambian) | ✅ 19 comprobaciones. v5 → v8 con columnas, tabla e índice; ninguna fila perdida; usuarios intactos y verificados. Paso v7 → v8: los usuarios con `body_weight` reciben su primer registro con su unidad y quien no tenía peso no recibe ninguno; repetirla no duplica. Los `CHECK` de altura, país, peso y unidad funcionan, y borrar un usuario borra en cascada sus registros. |
+| API aislada | ✅ 45 comprobaciones. 401 sin token; el antiguo `/auth/profile` da 404; datos personales (guardar, borrar, y 400 con país `XX` o `es`, fecha futura, `2026-02-30`, 1899, formato `dd/mm`, campos de más o de menos); medidas (49 y 281 → 400); registros (orden, el peso actual sigue siendo el más reciente aunque se guarde uno antiguo, 400 con fecha futura, 10, 501 o sin unidad); al cambiar a lb, 80 kg pasa a 176,4 sin tocar los registros; otro usuario no ve ni borra ajenos (404); al borrar se recalcula el peso actual, y al borrar todos queda en `null`; identidad (cambio, 409 por nombre de usuario o email, 400 por MX o por campos de más) y login con el nombre nuevo. |
+| Interfaz con Edge vía CDP (17 flujos, con **ratón y teclado reales** porque Radix abre con `pointerdown`) | ✅ Logo, `@username` y sin "Salir"; orden exacto del menú y separador; se cierra al pulsar fuera; con teclado (Enter, flechas, Esc y vuelta del foco); sin enlaces de vuelta; Perfil (250 opciones de país contando "Sin especificar", la edad pasa de 30 a 29 al mover un día la fecha, y se guarda); Mi progreso (altura, 2 pesajes, gráfica, lista y borrado con confirmación); Seguridad (el `@username` se actualiza en la cabecera); cerrar sesión desde el menú; sin errores de ejecución. |
+| Capturas | Menú abierto (oscuro, móvil), Perfil con la edad (oscuro, móvil), Mi progreso con la gráfica (claro, escritorio) |
+
+**Incidencias del test:**
+- La comprobación del título de la portada falló porque `innerText` incluye el texto `sr-only`. Se verificó aparte que **no hay ningún "My Workouts" visible**: solo el `<h1>` oculto, y lo primero que se ve es la rutina.
+- La primera pasada de la API se bloqueó: el test enviaba un cuerpo en un `GET`, y además la consola no mostraba la salida de `node` en primer plano. Se arreglaron el test y el lanzamiento.

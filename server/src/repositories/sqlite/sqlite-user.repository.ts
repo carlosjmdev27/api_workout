@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import type { Database, Statement } from 'better-sqlite3';
-import { DEFAULT_WEIGHT_UNIT, isWeightUnit, type User } from '@gym/shared';
+import { DEFAULT_WEIGHT_UNIT, isCountryCode, isWeightUnit, type User } from '@gym/shared';
 import type {
   CreateUserResult,
+  IdentityData,
   NewUserRecord,
-  ProfileData,
+  PersonalData,
+  PhysicalData,
   UniqueField,
-  UpdateProfileResult,
+  UpdateIdentityResult,
   UserRepository,
   UserWithHash,
   VerificationTicket,
@@ -18,22 +20,31 @@ interface UserRow {
   username: string;
   password_hash: string;
   name: string;
+  last_name: string | null;
+  country: string | null;
+  birth_date: string | null;
+  height_cm: number | null;
   created_at: string;
   body_weight: number | null;
   weight_unit: string;
   email_verified: number;
 }
 
-const COLS = 'id, email, username, password_hash, name, created_at, body_weight, weight_unit, email_verified';
+const COLS = `id, email, username, password_hash, name, last_name, country, birth_date, height_cm,
+  created_at, body_weight, weight_unit, email_verified`;
 
 const toUser = (row: UserRow): User => ({
   id: row.id,
   email: row.email,
   username: row.username,
   name: row.name,
+  lastName: row.last_name,
+  // The CHECKs / schemas only let valid values in; the guards keep the types honest.
+  country: row.country !== null && isCountryCode(row.country) ? row.country : null,
+  birthDate: row.birth_date,
+  heightCm: row.height_cm,
   createdAt: row.created_at,
   bodyWeight: row.body_weight,
-  // The column CHECK only allows 'kg' / 'lb'; the guard keeps the type honest.
   weightUnit: isWeightUnit(row.weight_unit) ? row.weight_unit : DEFAULT_WEIGHT_UNIT,
 });
 
@@ -43,15 +54,22 @@ function uniqueViolation(error: unknown): UniqueField | null {
   return error.message.includes('users.username') ? 'username' : 'email';
 }
 
+type InsertParams = Pick<UserRow, 'id' | 'email' | 'username' | 'password_hash' | 'name' | 'created_at' | 'email_verified'> & {
+  tokenHash: string | null;
+  expiresAt: number | null;
+};
+
 export class SqliteUserRepository implements UserRepository {
   private readonly db: Database;
   private readonly stmt: {
     findByIdentifier: Statement<{ identifier: string }, UserRow>;
     findById: Statement<[string], UserRow>;
-    insert: Statement<Omit<UserRow, 'body_weight' | 'weight_unit'> & { tokenHash: string | null; expiresAt: number | null }>;
+    insert: Statement<InsertParams>;
     count: Statement<[], { n: number }>;
     claim: Statement<[string]>[];
-    updateProfile: Statement<ProfileData & { id: string }>;
+    updatePersonal: Statement<PersonalData & { id: string }>;
+    updatePhysical: Statement<PhysicalData & { id: string }>;
+    updateIdentity: Statement<IdentityData & { id: string }>;
     updateHash: Statement<{ id: string; hash: string }>;
     setVerification: Statement<VerificationTicket & { id: string }>;
     confirm: Statement<{ tokenHash: string; now: number }>;
@@ -75,11 +93,12 @@ export class SqliteUserRepository implements UserRepository {
         db.prepare('UPDATE workout_sessions SET user_id = ? WHERE user_id IS NULL'),
         db.prepare('UPDATE exercise_catalog SET user_id = ? WHERE is_custom = 1 AND user_id IS NULL'),
       ],
-      // UNIQUE indexes on email / username reject another account's value atomically.
-      updateProfile: db.prepare(
-        `UPDATE users SET name = @name, username = @username, email = @email,
-         body_weight = @bodyWeight, weight_unit = @weightUnit WHERE id = @id`,
+      updatePersonal: db.prepare(
+        'UPDATE users SET name = @name, last_name = @lastName, country = @country, birth_date = @birthDate WHERE id = @id',
       ),
+      updatePhysical: db.prepare('UPDATE users SET height_cm = @heightCm, weight_unit = @weightUnit WHERE id = @id'),
+      // UNIQUE indexes on email / username reject another account's value atomically.
+      updateIdentity: db.prepare('UPDATE users SET username = @username, email = @email WHERE id = @id'),
       updateHash: db.prepare('UPDATE users SET password_hash = @hash WHERE id = @id'),
       setVerification: db.prepare(
         'UPDATE users SET verification_token = @tokenHash, verification_expires = @expiresAt WHERE id = @id AND email_verified = 0',
@@ -104,9 +123,19 @@ export class SqliteUserRepository implements UserRepository {
     return row ? toUser(row) : null;
   }
 
-  async updateProfile(id: string, data: ProfileData): Promise<UpdateProfileResult> {
+  async updatePersonal(id: string, data: PersonalData): Promise<User | null> {
+    if (this.stmt.updatePersonal.run({ id, ...data }).changes === 0) return null;
+    return this.findById(id);
+  }
+
+  async updatePhysical(id: string, data: PhysicalData): Promise<User | null> {
+    if (this.stmt.updatePhysical.run({ id, ...data }).changes === 0) return null;
+    return this.findById(id);
+  }
+
+  async updateIdentity(id: string, data: IdentityData): Promise<UpdateIdentityResult> {
     try {
-      if (this.stmt.updateProfile.run({ id, ...data }).changes === 0) return { status: 'missing' };
+      if (this.stmt.updateIdentity.run({ id, ...data }).changes === 0) return { status: 'missing' };
     } catch (error) {
       const field = uniqueViolation(error);
       if (field) return { status: 'conflict', field };
@@ -137,7 +166,7 @@ export class SqliteUserRepository implements UserRepository {
   }
 
   async create(record: NewUserRecord): Promise<CreateUserResult> {
-    const row = {
+    const row: InsertParams = {
       id: randomUUID(),
       email: record.email,
       username: record.username,
@@ -155,8 +184,9 @@ export class SqliteUserRepository implements UserRepository {
         this.stmt.insert.run(row);
         const isFirst = this.stmt.count.get()?.n === 1;
         if (isFirst) this.stmt.claim.forEach((statement) => statement.run(row.id));
-        const user = toUser({ ...row, body_weight: null, weight_unit: DEFAULT_WEIGHT_UNIT });
-        return { status: 'created', user, claimedLegacyData: isFirst };
+        const created = this.stmt.findById.get(row.id);
+        if (!created) throw new Error('User not found right after insert');
+        return { status: 'created', user: toUser(created), claimedLegacyData: isFirst };
       })();
     } catch (error) {
       const field = uniqueViolation(error);

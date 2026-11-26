@@ -6,6 +6,7 @@ import { appUrlOf, type Env } from './config/env.js';
 import { SERVER_ROOT } from './config/paths.js';
 import { AuthController } from './controllers/auth.controller.js';
 import { CatalogController } from './controllers/catalog.controller.js';
+import { ProfileController } from './controllers/profile.controller.js';
 import { DayExerciseController } from './controllers/day-exercise.controller.js';
 import { RoutineController } from './controllers/routine.controller.js';
 import { SessionController } from './controllers/session.controller.js';
@@ -18,6 +19,7 @@ import { SqliteOwnershipRepository } from './repositories/sqlite/sqlite-ownershi
 import { SqliteRoutineRepository } from './repositories/sqlite/sqlite-routine.repository.js';
 import { SqliteSessionRepository } from './repositories/sqlite/sqlite-session.repository.js';
 import { SqliteUserRepository } from './repositories/sqlite/sqlite-user.repository.js';
+import { SqliteWeightLogRepository } from './repositories/sqlite/sqlite-weight-log.repository.js';
 import { SqliteWorkoutDayRepository } from './repositories/sqlite/sqlite-workout-day.repository.js';
 import { AccessGuard } from './services/access.guard.js';
 import { AuthService } from './services/auth.service.js';
@@ -27,6 +29,7 @@ import { DnsEmailDomainChecker } from './services/email-domain.service.js';
 import { ConsoleEmailSender, ResendEmailSender, type EmailSender } from './services/email.service.js';
 import { EmailVerificationService } from './services/verification.service.js';
 import { PasswordService } from './services/password.service.js';
+import { ProfileService } from './services/profile.service.js';
 import { RoutineService } from './services/routine.service.js';
 import { SessionService } from './services/session.service.js';
 import { TokenService } from './services/token.service.js';
@@ -70,6 +73,7 @@ export function buildContainer(env: Env): Container {
     { users, passwords: new PasswordService(), tokens: new TokenService(env.JWT_SECRET), verification, emailDomains: new DnsEmailDomainChecker() },
     { allowRegistration: env.ALLOW_REGISTRATION, requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION },
   );
+  const profileService = new ProfileService(users, new SqliteWeightLogRepository(db));
   const routineService = new RoutineService(new SqliteRoutineRepository(db), access);
   const dayService = new WorkoutDayService(new SqliteWorkoutDayRepository(db), access);
   const catalogService = new CatalogService(new SqliteCatalogRepository(db));
@@ -90,6 +94,7 @@ export function buildContainer(env: Env): Container {
       dayExercise: new DayExerciseController(exerciseService),
       session: new SessionController(sessionService),
       catalog: new CatalogController(catalogService),
+      profile: new ProfileController(profileService),
     },
   });
 

@@ -1,7 +1,7 @@
 // Single source of truth for the API contract (PROJECT_DOC pending #1, resolved).
 export { LIMITS } from './limits.js';
 export { SET_TYPES, isSetType, type SetType } from './set-types.js';
-export { DEFAULT_WEIGHT_UNIT, WEIGHT_UNITS, isWeightUnit, type WeightUnit } from './weight-units.js';
+export { DEFAULT_WEIGHT_UNIT, WEIGHT_UNITS, convertWeight, isWeightUnit, type WeightUnit } from './weight-units.js';
 export {
   EQUIPMENT,
   MUSCLE_GROUPS,
@@ -21,6 +21,8 @@ export * from './schemas/day-exercise.schema.js';
 export * from './schemas/session.schema.js';
 export * from './schemas/catalog.schema.js';
 export * from './schemas/auth.schema.js';
+export * from './schemas/profile.schema.js';
+export { COUNTRIES, COUNTRY_CODES, countryName, isCountryCode, type CountryCode } from './countries.js';
 
 export type * from './types/domain.types.js';
 export type * from './types/api.types.js';

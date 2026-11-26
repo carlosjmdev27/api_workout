@@ -14,12 +14,14 @@ import { RoutineCreatePage } from './features/routines/pages/RoutineCreatePage';
 import { RoutineDetailPage } from './features/routines/pages/RoutineDetailPage';
 import { RoutineEditPage } from './features/routines/pages/RoutineEditPage';
 import { RoutineListPage } from './features/routines/pages/RoutineListPage';
+import { SecurityPage } from './features/security/pages/SecurityPage';
 import { ActiveWorkoutBanner } from './features/workout/components/ActiveWorkoutBanner';
 import { WorkoutPage } from './features/workout/pages/WorkoutPage';
 import { ThemeToggle } from './theme/ThemeToggle';
 
-// Recharts lives only in the history view: load it on demand so the main bundle stays small.
+// Recharts lives only in the history and progress views: load them on demand so the main bundle stays small.
 const HistoryPage = lazy(() => import('./features/history/pages/HistoryPage').then((m) => ({ default: m.HistoryPage })));
+const ProgressPage = lazy(() => import('./features/progress/pages/ProgressPage').then((m) => ({ default: m.ProgressPage })));
 
 /** Top bar, right side: theme switch next to the user menu. */
 function HeaderActions(): JSX.Element {
@@ -53,6 +55,11 @@ function App(): JSX.Element {
               />
               <Route path="sessions/:sessionId" element={<SessionSummaryPage />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route
+                path="progress"
+                element={<Suspense fallback={<LoadingState label="Cargando tu progreso…" />}><ProgressPage /></Suspense>}
+              />
+              <Route path="security" element={<SecurityPage />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Route>

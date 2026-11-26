@@ -1,4 +1,4 @@
-import type { AuthResponse, LoginInput, PasswordChange, ProfileUpdate, RegisterInput, RegisterResponse, User } from '@gym/shared';
+import type { AuthResponse, IdentityUpdate, LoginInput, PasswordChange, RegisterInput, RegisterResponse, User } from '@gym/shared';
 import { AppError, BadRequestError, ConflictError, ForbiddenError, UnauthorizedError } from '../errors/app-error.js';
 import type { UniqueField, UserRepository } from '../repositories/user.repository.js';
 import type { EmailDomainChecker } from './email-domain.service.js';
@@ -82,8 +82,8 @@ export class AuthService {
       await this.deps.users.markEmailVerified(found.id);
     }
     // Explicit allowlist: the hash and other private columns never leave this service.
-    const { id, email, username, name, createdAt, bodyWeight, weightUnit } = found;
-    return this.issue({ id, email, username, name, createdAt, bodyWeight, weightUnit });
+    const { id, email, username, name, lastName, country, birthDate, heightCm, createdAt, bodyWeight, weightUnit } = found;
+    return this.issue({ id, email, username, name, lastName, country, birthDate, heightCm, createdAt, bodyWeight, weightUnit });
   }
 
   /** Resolves a bearer token to an existing user (a deleted user's token is useless). */
@@ -101,14 +101,13 @@ export class AuthService {
   }
 
   /**
-   * Name, username, email (normalized by the schema), body weight and unit. A NEW email
-   * must have mail servers too; another account's email or username -> 409.
-   * Changing the unit relabels weights; stored numbers are never converted.
+   * Login identity: username + email (normalized by the schema). A NEW email must have
+   * mail servers too; another account's email or username -> 409.
    */
-  async updateProfile(userId: string, input: ProfileUpdate): Promise<User> {
+  async updateIdentity(userId: string, input: IdentityUpdate): Promise<User> {
     const current = await this.me(userId);
     if (input.email !== current.email) await this.assertEmailCanReceiveMail(input.email);
-    const result = await this.deps.users.updateProfile(userId, input);
+    const result = await this.deps.users.updateIdentity(userId, input);
     if (result.status === 'missing') throw sessionExpired();
     if (result.status === 'conflict') throw taken(result.field);
     return result.user;

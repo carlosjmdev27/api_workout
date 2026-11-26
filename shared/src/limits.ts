@@ -16,6 +16,13 @@ export const LIMITS = {
   /** Body weight (profile), in the user's unit. */
   BODY_WEIGHT_MIN: 20,
   BODY_WEIGHT_MAX: 500,
+  /** Height in cm (Mi progreso). */
+  HEIGHT_MIN_CM: 50,
+  HEIGHT_MAX_CM: 280,
+  /** Oldest accepted birth date. */
+  BIRTH_DATE_MIN: '1900-01-01',
+  /** Weight log entries returned for the chart / list (newest kept if there are more). */
+  WEIGHT_LOGS_MAX: 1000,
 
   /** Planned sets + extra sets added on the fly during a workout. */
   LOGGED_SET_NUMBER_MAX: 30,

@@ -2,7 +2,6 @@ import type { JSX } from 'react';
 import { Dumbbell, Plus } from 'lucide-react';
 import type { RoutineSummary } from '@gym/shared';
 import { LinkButton } from '../../../components/LinkButton';
-import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '../../../components/StatusViews';
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle';
 import { getErrorMessage } from '../../../utils/errors';
@@ -33,11 +32,15 @@ function FirstRoutine(): JSX.Element {
   );
 }
 
-/** Title + grid; the add card closes the grid. auto-rows-fr keeps every card the same height. */
+/**
+ * The grid straight away (no visible title, Fase 18); the add card closes it.
+ * auto-rows-fr keeps every card the same height.
+ */
 function RoutineGrid({ routines }: { routines: RoutineSummary[] }): JSX.Element {
   return (
     <>
-      <PageHeader title={ROUTINES_TITLE} />
+      {/* Visually hidden: the page still needs a heading for screen readers. */}
+      <h1 className="sr-only">{ROUTINES_TITLE}</h1>
       <ul className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {routines.map((routine) => (
           <li key={routine.id}>

@@ -1,8 +1,8 @@
 import type {
   AuthResponse,
+  IdentityUpdate,
   LoginInput,
   PasswordChange,
-  ProfileUpdate,
   RegisterInput,
   RegisterResponse,
   ResendVerificationInput,
@@ -17,6 +17,6 @@ export const authApi = {
   resendVerification: (input: ResendVerificationInput): Promise<void> =>
     requestVoidWithBody('POST', '/auth/resend-verification', input),
   me: (): Promise<User> => request('GET', '/auth/me'),
-  updateProfile: (input: ProfileUpdate): Promise<User> => request('PUT', '/auth/profile', input),
+  updateIdentity: (input: IdentityUpdate): Promise<User> => request('PUT', '/auth/identity', input),
   changePassword: (input: PasswordChange): Promise<void> => requestVoidWithBody('PUT', '/auth/password', input),
 };

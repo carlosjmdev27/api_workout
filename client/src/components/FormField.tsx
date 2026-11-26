@@ -1,6 +1,15 @@
-import { useId, useState, type InputHTMLAttributes, type JSX, type ReactNode, type TextareaHTMLAttributes } from 'react';
+import {
+  useId,
+  useState,
+  type InputHTMLAttributes,
+  type JSX,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 
 interface FieldMeta {
@@ -73,7 +82,29 @@ export function TextField({ label, error, hint, required, className, suffix, ...
   );
 }
 
-type PasswordFieldProps = FieldMeta &
+type SelectFieldProps = FieldMeta & Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> & { children: ReactNode };
+
+/** Labelled native <select> (shadcn NativeSelect): fast, accessible and mobile-friendly for long lists. */
+export function SelectField({ label, error, hint, required, className, children, ...selectProps }: SelectFieldProps): JSX.Element {
+  const id = useId();
+  return (
+    <FieldShell id={id} label={label} error={error} hint={hint} required={required}>
+      <NativeSelect
+        id={id}
+        required={required}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy(id, { label, error, hint })}
+        // Same height as the text inputs (h-9) so mixed rows line up.
+        className={`w-full [&_select]:h-9 ${className ?? ''}`}
+        {...selectProps}
+      >
+        {children}
+      </NativeSelect>
+    </FieldShell>
+  );
+}
+
+type PasswordFieldProps =FieldMeta &
   Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
     /** Accessible name of the eye button; default "Mostrar <label>". */
     toggleLabel?: string;

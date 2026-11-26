@@ -8,6 +8,7 @@ const MESSAGES: Record<string, string> = {
   DAY_NOT_FOUND: 'La tabla no existe o ha sido eliminada.',
   EXERCISE_NOT_FOUND: 'El ejercicio no existe o ha sido eliminado.',
   SESSION_NOT_FOUND: 'La sesión no existe o ha sido eliminada.',
+  WEIGHT_LOG_NOT_FOUND: 'Ese registro de peso ya no existe. Recarga la página.',
   VALIDATION_ERROR: 'Hay datos no válidos. Revisa el formulario.',
   INVALID_DAY_ORDER: 'El orden de las tablas ha cambiado. Recarga la página.',
   INVALID_EXERCISE_ORDER: 'El orden de los ejercicios ha cambiado. Recarga la página.',

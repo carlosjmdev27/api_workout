@@ -2,6 +2,7 @@ import compression from 'compression';
 import express, { type Express, type RequestHandler } from 'express';
 import type { AuthController } from './controllers/auth.controller.js';
 import type { CatalogController } from './controllers/catalog.controller.js';
+import type { ProfileController } from './controllers/profile.controller.js';
 import type { DayExerciseController } from './controllers/day-exercise.controller.js';
 import type { RoutineController } from './controllers/routine.controller.js';
 import type { SessionController } from './controllers/session.controller.js';
@@ -13,6 +14,7 @@ import { createAuthRouter } from './routes/auth.routes.js';
 import { createCatalogRouter } from './routes/catalog.routes.js';
 import { createDayExerciseRouter } from './routes/day-exercise.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
+import { createProfileRouter } from './routes/profile.routes.js';
 import { createRoutineRouter } from './routes/routine.routes.js';
 import { createSessionRouter } from './routes/session.routes.js';
 import { createWorkoutDayRouter } from './routes/workout-day.routes.js';
@@ -24,6 +26,7 @@ export interface AppControllers {
   dayExercise: DayExerciseController;
   session: SessionController;
   catalog: CatalogController;
+  profile: ProfileController;
 }
 
 export interface AppDependencies {
@@ -62,6 +65,7 @@ export function createApp(deps: AppDependencies): Express {
   app.use('/api', createCatalogRouter(controllers.catalog)); // Before /exercises/:exerciseId.
   app.use('/api', createDayExerciseRouter(controllers.dayExercise));
   app.use('/api', createSessionRouter(controllers.session));
+  app.use('/api', createProfileRouter(controllers.profile));
 
   // Web (production): static files + SPA fallback for every non-/api GET.
   if (publicDir) app.use(serveSpa(publicDir));

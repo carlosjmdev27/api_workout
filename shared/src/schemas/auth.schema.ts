@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { LIMITS } from '../limits.js';
-import { WEIGHT_UNITS } from '../weight-units.js';
 import { requiredText } from './common.schema.js';
 
 /** Emails are compared and stored trimmed and in lowercase. */
@@ -52,20 +51,10 @@ export const resendVerificationSchema = z.strictObject({
   identifier: identifierSchema,
 });
 
-/** Body weight: a reasonable positive number, or null to clear it. */
-export const bodyWeightSchema = z
-  .number('Must be a number')
-  .min(LIMITS.BODY_WEIGHT_MIN, `Must be between ${LIMITS.BODY_WEIGHT_MIN} and ${LIMITS.BODY_WEIGHT_MAX}`)
-  .max(LIMITS.BODY_WEIGHT_MAX, `Must be between ${LIMITS.BODY_WEIGHT_MIN} and ${LIMITS.BODY_WEIGHT_MAX}`)
-  .nullable();
-
-/** Profile edit: every field is sent (the form always has them). */
-export const profileUpdateSchema = z.strictObject({
-  name: requiredText(LIMITS.NAME_MAX),
+/** Login identity (Seguridad): username + email, both unique; a new email must have MX. */
+export const identityUpdateSchema = z.strictObject({
   username: usernameSchema,
   email: emailSchema,
-  bodyWeight: bodyWeightSchema,
-  weightUnit: z.enum(WEIGHT_UNITS, "Must be 'kg' or 'lb'"),
 });
 
 /** The current password is only compared, so it gets the loose login rules. */
@@ -77,5 +66,5 @@ export const passwordChangeSchema = z.strictObject({
 export type RegisterInput = z.infer<typeof registerInputSchema>;
 export type LoginInput = z.infer<typeof loginInputSchema>;
 export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;
-export type ProfileUpdate = z.infer<typeof profileUpdateSchema>;
+export type IdentityUpdate = z.infer<typeof identityUpdateSchema>;
 export type PasswordChange = z.infer<typeof passwordChangeSchema>;
