@@ -708,3 +708,39 @@ Aplicar migración idempotente verificando `PRAGMA table_info(users)` para conse
 - `GET /api/profile/weight-logs`: Devuelve el historial de peso corporal del usuario ordenado cronológicamente.
 - `POST /api/profile/weight-logs`: Registra un nuevo pesaje `{ weight, unit, recordedAt? }` y actualiza `users.body_weight`.
 - `DELETE /api/profile/weight-logs/:logId`: Elimina un registro de peso propio del usuario.
+
+---
+
+## 📧 Fase 19: Migración del Envío de Correos a Brevo API
+
+### 1. Objetivo
+Sustituir el proveedor de envío de correos de Resend por la **API HTTP v3 de Brevo** (`https://api.brevo.com/v3/smtp/email`) utilizando `auraworkout.app@gmail.com` como remitente verificado, permitiendo el envío gratuito de correos de confirmación a cualquier usuario registrado sin necesidad de dominio propio.
+
+---
+
+### 2. Cambios en el Backend (`server/`)
+1. **Adaptador `BrevoEmailSender` (`email.service.ts`)**:
+   - Sustituir `ResendEmailSender` por `BrevoEmailSender` manteniendo intacta la interfaz `EmailSender` y el fallback `ConsoleEmailSender` cuando no exista API key en desarrollo.
+   - Realizar una petición `POST` con `fetch` nativo (sin dependencias npm adicionales y con timeout de 10 segundos) a `https://api.brevo.com/v3/smtp/email`:
+     - Cabeceras:
+       - `api-key`: `process.env.BREVO_API_KEY`
+       - `Content-Type`: `application/json`
+       - `Accept`: `application/json`
+     - Cuerpo JSON:
+       - `sender`: `{ name: <nombre extraído de EMAIL_FROM o "AuraWorkout">, email: <email extraído de EMAIL_FROM o "auraworkout.app@gmail.com"> }`
+       - `to`: `[{ email: toEmail, name: toName }]`
+       - `subject`: asunto del correo de verificación
+       - `htmlContent`: plantilla HTML existente (escapando el nombre del usuario)
+   - Gestionar errores HTTP de Brevo registrando el código y detalle en consola y devolviendo `false` sin tumbar la petición de registro.
+2. **Variables de Entorno (`config/env.ts`, `.env.example` y `docker-compose.yml`)**:
+   - Sustituir `RESEND_API_KEY` por **`BREVO_API_KEY`** (opcional en esquema Zod; en producción registrar aviso en consola si falta).
+   - Actualizar el valor por defecto de `EMAIL_FROM` a **`AuraWorkout <auraworkout.app@gmail.com>`**.
+   - Parsear `EMAIL_FROM` de forma segura (soportando tanto el formato `"Nombre <correo@dominio.com>"` como `"correo@dominio.com"` directo) para construir el objeto `sender` requerido por Brevo.
+
+---
+
+### 3. Configuración en Producción (Railway)
+Una vez desplegado el cambio:
+1. Añadir la variable secreta `BREVO_API_KEY` con la clave generada en Brevo y eliminar `RESEND_API_KEY`.
+2. Actualizar `EMAIL_FROM` = `AuraWorkout <auraworkout.app@gmail.com>`.
+3. Cambiar `REQUIRE_EMAIL_VERIFICATION` = `true` y `ALLOW_REGISTRATION` = `true` (si se desea abrir el registro).

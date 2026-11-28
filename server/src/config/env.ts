@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
+import { parseEmailFrom } from './email-from.js';
 import { SERVER_ROOT } from './paths.js';
 
 const ENV_FILE_PATH = resolve(SERVER_ROOT, '.env');
@@ -48,16 +49,28 @@ const envSchema = z.object({
    * (`${APP_URL}/api/auth/verify-email?token=...`). Required in production.
    */
   APP_URL: optional(z.url()),
-  /** Resend API key. Without it the confirmation emails are printed to the server log. Secret. */
-  RESEND_API_KEY: optional(z.string().min(10)),
+  /** Brevo API key (transactional email). Without it the confirmation emails are printed to the server log. Secret. */
+  BREVO_API_KEY: optional(z.string().min(10)),
   /**
    * true (default): new accounts must confirm their email before logging in.
-   * false: no confirmation email (e.g. while there is no verified sender domain in Resend);
-   * the MX check still applies and pending accounts can log in.
+   * false: no confirmation email; the MX check still applies and pending accounts can log in.
    */
   REQUIRE_EMAIL_VERIFICATION: z.stringbool().default(true),
-  /** Sender of the emails. resend.dev only delivers to the Resend account's own address. */
-  EMAIL_FROM: z.string().min(3).default('AuraWorkout <onboarding@resend.dev>'),
+  /**
+   * Sender: "Nombre <correo@dominio.com>" or "correo@dominio.com". It must be a sender
+   * verified in Brevo. Parsed (and checked) at startup into { name, email }.
+   */
+  EMAIL_FROM: z
+    .string()
+    .default('AuraWorkout <auraworkout.app@gmail.com>')
+    .transform((value, ctx) => {
+      const sender = parseEmailFrom(value);
+      if (!sender) {
+        ctx.addIssue({ code: 'custom', message: 'EMAIL_FROM must be "Name <email@domain>" or "email@domain"' });
+        return z.NEVER;
+      }
+      return sender;
+    }),
 }).superRefine((env, ctx) => {
   if (env.NODE_ENV === 'production' && !env.APP_URL) {
     ctx.addIssue({ code: 'custom', path: ['APP_URL'], message: 'APP_URL is required in production (public URL for the email links)' });

@@ -52,6 +52,8 @@ Las entradas van en orden cronológico; la más reciente, al final.
 
 **Fase 18 de la spec (navegación, menú de usuario y cuenta en tres secciones):** ✅ Completada (2026-11-26). Esquema de la base de datos en **v8**.
 
+**Fase 19 de la spec (envío de correos con Brevo en lugar de Resend):** ✅ Código completado (2026-11-28). Falta configurar Railway (ver la sección de la Fase 19).
+
 ### Pendientes / deuda técnica
 
 Revisar esta lista al empezar cada tarea.
@@ -67,7 +69,7 @@ Revisar esta lista al empezar cada tarea.
 | 6 | **Gestionar los ejercicios propios del catálogo** (renombrar, cambiar el grupo muscular, borrar). Hoy un ejercicio mal clasificado queda así para siempre. | Media | v4 |
 | 7 | **Progresión por ejercicio entre tablas** usando `catalog_exercise_id` (p. ej. "Press de banca" en Torso A y Torso B como un mismo ejercicio). El vínculo ya existe; falta la vista. | Baja (mejora) | v4 |
 | 8 | **Dividir el bundle del cliente** (`import()` por página). 🟡 **Parcial** (2026-11-24): el historial (con Recharts, 125 kB gzip) ya se carga bajo demanda. El chunk principal sigue en 545 kB (168 kB gzip) y Vite sigue avisando. Siguiente paso: cargar también bajo demanda el entrenamiento y el resumen. | Baja | v5 |
-| 11 | **Dominio propio para los correos (Resend).** Hoy `EMAIL_FROM` es `AuraWorkout <onboarding@resend.dev>`, que solo entrega correos al email de la cuenta de Resend del usuario. Con el registro abierto, Resend rechaza (403) los correos a otras personas, así que desde el 2026-11-24 Railway funciona con `REQUIRE_EMAIL_VERIFICATION=false` (decisión del usuario). Se intentó `auraworkout.com`: en Resend sale "Checking DNS", pero el dominio sigue aparcado en HugeDomains/NameBright (todos sus nombres apuntan a `traff-https.hugedomains.com`) y no tiene los registros DKIM/SPF/MX de Resend. **Para cerrarlo:** tener un dominio propio, añadir en su DNS los registros que indica Resend, esperar a **Verified** y cambiar `EMAIL_FROM` en Railway (sin tocar código). | Baja (necesaria antes de abrir el registro a otras personas) | Fase 17 || 4 | Avisos de `picomatch` (GHSA-fc5q-39xc-vjpf) en dependencias de desarrollo. El 2026-11-19 `npm audit` ya no los marca: **0 vulnerabilidades**, aunque seguimos en `picomatch@4.0.7`. No hubo cambio por nuestra parte; lo más probable es que se revisara el aviso. Vigilar en cada auditoría. | Baja | Fase 1 |
+| 11 | **Correos a cualquier usuario.** 🟡 **Parcial** (2026-11-28): en la Fase 19 se cambia Resend por **Brevo**, que permite enviar desde un remitente verificado de Gmail (`auraworkout.app@gmail.com`) a cualquier dirección, sin dominio propio. **Falta:** configurar `BREVO_API_KEY` en Railway, revisar las IPs autorizadas de Brevo y comprobar que los correos no acaban en spam. Un remitente `@gmail.com` enviado desde Brevo no pasa la alineación DMARC de Gmail, así que la entrega puede ser peor que con un dominio propio. Si los correos se pierden, la solución definitiva sigue siendo un dominio propio verificado en Brevo. | Media (antes de volver a exigir la verificación) | Fase 17 |
 
 **Detalle del pendiente #5: privacidad de `PROJECT_SPEC.md`, `PROJECT_DOC.md` e `INSTRUCCIONESDEEJECUCION.md`**
 
@@ -1978,3 +1980,40 @@ La redirección tras confirmar usa `CORS_ORIGIN` si existe: Vite en desarrollo, 
 **Incidencias del test:**
 - La comprobación del título de la portada falló porque `innerText` incluye el texto `sr-only`. Se verificó aparte que **no hay ningún "My Workouts" visible**: solo el `<h1>` oculto, y lo primero que se ve es la rutina.
 - La primera pasada de la API se bloqueó: el test enviaba un cuerpo en un `GET`, y además la consola no mostraba la salida de `node` en primer plano. Se arreglaron el test y el lanzamiento.
+
+---
+
+## 2026-11-28 · Fase 19: envío de correos con Brevo (en lugar de Resend)
+
+**Por qué:** con `onboarding@resend.dev`, Resend solo entrega correos al dueño de la cuenta, y para enviarlos a cualquiera exige un dominio propio (pendiente #11). Brevo permite usar como remitente una dirección de Gmail verificada.
+
+### Cambios
+- **`BrevoEmailSender`** (`email.service.ts`) sustituye a `ResendEmailSender`. Cumple la misma interfaz `EmailSender` y no añade dependencias:
+  - hace un `fetch` `POST https://api.brevo.com/v3/smtp/email` con un timeout de 10 s;
+  - lleva las cabeceras `api-key`, `Content-Type` y `Accept` JSON;
+  - el cuerpo es `{ sender:{name,email}, to:[{email,name}], subject, htmlContent, textContent }`;
+  - si Brevo devuelve un error, lanza una excepción con el código y el detalle, nunca con la clave. `EmailVerificationService.send` la recoge, la registra y devuelve `false`, así que el registro no se rompe.
+- **`ConsoleEmailSender`** sigue siendo el respaldo cuando no hay clave: en desarrollo y en Docker, los enlaces salen en el log.
+- **`EMAIL_FROM`:** el nuevo `config/email-from.ts` admite `"Nombre <correo@dominio>"` y también `"correo@dominio"` solo, en cuyo caso el nombre es "AuraWorkout". Se valida **al arrancar**: con un valor inválido, el servidor no arranca y explica el motivo. El valor por defecto es `AuraWorkout <auraworkout.app@gmail.com>`.
+- **Variables:** `RESEND_API_KEY` pasa a `BREVO_API_KEY`, opcional. En producción, si falta, se avisa al arrancar. Actualizados `env.ts`, los dos `.env.example` y `docker-compose.yml`. Ya no queda ninguna referencia a Resend como proveedor.
+- El correo incluye el nombre del destinatario en `to`, y el nombre dentro del HTML sigue escapado.
+
+### Verificación
+- `npm run check` ✅.
+- **Adaptador contra un servidor Brevo falso local** (sin clave real y sin enviar nada), 17 comprobaciones ✅:
+  - `EMAIL_FROM` en todas sus formas válidas y 6 formas inválidas;
+  - las cabeceras exactas (la clave solo viaja en `api-key`, sin `Authorization`) y el cuerpo exacto;
+  - un error de Brevo da una excepción con el detalle y sin la clave;
+  - a través del servicio de verificación: el enlace usa `APP_URL`, un nombre con `<script>` sale escapado, y un error de Brevo devuelve `false` y queda registrado.
+- **`EMAIL_FROM` inválido:** el servidor no arranca y muestra el mensaje ✅.
+
+### Incidencia de la prueba
+Al repetir la prueba de la Fase 17 en una API aislada, el servidor cargó el `server/.env` local, que ya tiene una `BREVO_API_KEY` real, e **intentó enviar 2 correos reales** a direcciones de prueba inventadas. **Brevo los rechazó** (401, "unrecognised IP address"), así que **no salió ningún correo**. Se paró la prueba. A partir de ahora, las pruebas locales que registran usuarios se hacen con `REQUIRE_EMAIL_VERIFICATION=false` o contra el servidor falso.
+
+**Lo que muestra:** la cuenta de Brevo tiene activada la **restricción de IPs autorizadas**. Railway no tiene una IP de salida fija, así que en producción Brevo también rechazaría los envíos. **Antes de activar la verificación en Railway** hay que desactivar esa restricción para la API (Brevo → Security → Authorised IPs) o autorizar las IPs de salida.
+
+### Configuración pendiente en Railway (Fase 19.3)
+1. `BREVO_API_KEY` con la clave de Brevo. Es secreta y la crea el usuario.
+2. Borrar `RESEND_API_KEY`.
+3. `EMAIL_FROM=AuraWorkout <auraworkout.app@gmail.com>` (es el valor por defecto, así que basta con borrar el antiguo).
+4. Cuando esté comprobado que llegan los correos: `REQUIRE_EMAIL_VERIFICATION=true`.

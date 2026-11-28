@@ -38,6 +38,7 @@ export class EmailVerificationService {
     try {
       await this.sender.send({
         to: user.email,
+        toName: user.name,
         subject: 'Confirma tu correo en AuraWorkout',
         text: `Hola ${user.name}:\n\nConfirma tu correo para activar tu cuenta de AuraWorkout:\n${link}\n\nEl enlace caduca en ${LIMITS.VERIFICATION_TTL_HOURS} horas. Si no has creado esta cuenta, ignora este mensaje.`,
         html: `<p>Hola ${name}:</p><p>Confirma tu correo para activar tu cuenta de <strong>AuraWorkout</strong>:</p>

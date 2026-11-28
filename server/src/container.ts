@@ -26,7 +26,7 @@ import { AuthService } from './services/auth.service.js';
 import { CatalogService } from './services/catalog.service.js';
 import { DayExerciseService } from './services/day-exercise.service.js';
 import { DnsEmailDomainChecker } from './services/email-domain.service.js';
-import { ConsoleEmailSender, ResendEmailSender, type EmailSender } from './services/email.service.js';
+import { BrevoEmailSender, ConsoleEmailSender, type EmailSender } from './services/email.service.js';
 import { EmailVerificationService } from './services/verification.service.js';
 import { PasswordService } from './services/password.service.js';
 import { ProfileService } from './services/profile.service.js';
@@ -53,10 +53,10 @@ function resolvePublicDir(env: Env): string | null {
   return null;
 }
 
-/** Resend when configured; otherwise the confirmation links go to the log (development). */
+/** Brevo when configured; otherwise the confirmation links go to the log (development / Docker). */
 function emailSenderFor(env: Env): EmailSender {
-  if (env.RESEND_API_KEY) return new ResendEmailSender(env.RESEND_API_KEY, env.EMAIL_FROM);
-  if (env.NODE_ENV === 'production') console.warn('RESEND_API_KEY is not set: confirmation emails will only be logged');
+  if (env.BREVO_API_KEY) return new BrevoEmailSender(env.BREVO_API_KEY, env.EMAIL_FROM);
+  if (env.NODE_ENV === 'production') console.warn('BREVO_API_KEY is not set: confirmation emails will only be logged');
   return new ConsoleEmailSender();
 }
 
